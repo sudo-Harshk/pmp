@@ -1,25 +1,87 @@
-# pmp
+# Play My Playlist (pmp)
 
-Play My Playlist — a synchronous multiplayer YouTube playlist guessing game.
+A **synchronous multiplayer** YouTube playlist guessing game built with React + TypeScript, Vite, Tailwind CSS, and Firebase Realtime Database.
 
-## What's implemented
+Players submit YouTube links, the game deduplicates identical songs into a single track, and everyone guesses **who** submitted each song within a 30-second snippet. Correct guesses and submitter bonuses earn points; the highest scorer takes the crown.
 
-- **`src/types/game.ts`** — Type definitions: `Submission`, `PlaylistTrack`, `Player`, `RoomState`, plus the `RoomStatus` union.
-- **`src/lib/youtube.ts`** — Unit-tested helpers:
-  - `extractVideoId(url)` — robustly extracts the 11-char video ID from `watch`, `youtu.be`, `embed`, and `shorts` URLs.
-  - `processSubmissions(submissions)` — deduplicates identical video IDs, merges submitter names (no dupes), and returns unique `PlaylistTrack[]`.
-- **UI components** (`src/components/`):
-  - `RoomCard` — create/join a mock room with a player name.
-  - `SongSubmissionForm` — dynamic N-song form (default 3, adjustable 1–10) with live valid/invalid YouTube URL indicators.
-  - `DedupPreview` — shows the deduplicated playlist with per-track video ID and all submitters.
-- **`src/App.tsx`** — local state wiring (lobby → submission → preview) using React `useState`.
+## Highlights
+
+- **Real-time multiplayer** — rooms, live submissions, voting, and a host-managed game loop synced over Firebase Realtime Database.
+- **Smart deduplication** — duplicate songs merge into one track listing every submitter.
+- **Embedded player** — `react-youtube` with error handling for restricted/removed videos.
+- **Audio-Only Mode** — hide the video (equalizer/vinyl overlay) for extra challenge.
+- **Session persistence** — reload or rejoin a room without losing identity or host status.
+- **Auto-scoring** — +10 for correct guesses, +5 per wrong guess split among submitters.
+- **Victory confetti** — celebratory cannon on the final leaderboard.
+
+## Tech Stack
+
+| Layer      | Choice                                  |
+| ---------- | --------------------------------------- |
+| UI         | React 18 + TypeScript                   |
+| Build      | Vite                                    |
+| Styling    | Tailwind CSS v3                         |
+| Backend    | Firebase Realtime Database (modular SDK)|
+| Video      | `react-youtube` (YouTube IFrame API)    |
+| Testing    | Vitest + jsdom                          |
+| Hosting    | Vercel (static SPA)                     |
+
+## Project Status
+
+Phases 1–4 are complete and committed:
+
+- **Phase 1** — Core types, YouTube parsing & deduplication helpers + tests
+- **Phase 2** — Embedded player, 30s snippet timer, error handling
+- **Phase 3** — Firebase sync, real-time game loop, voting & scoring
+- **Phase 4** — Session persistence, confetti, audio-only mode, Vercel config
+
+See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
+
+## Getting Started
+
+```bash
+npm install
+cp .env.example .env.local   # then fill in your Firebase credentials
+npm run dev
+```
+
+Full setup instructions (incl. Firebase project creation): **[docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)**
+
+> `.env.local` is gitignored. Only the placeholder `.env.example` is committed.
 
 ## Scripts
 
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Start the Vite dev server            |
+| `npm run build`      | Type-check + production build        |
+| `npm run preview`    | Preview the production build        |
+| `npm run typecheck`  | TypeScript check-only compile        |
+| `npm test`           | Run all unit tests                   |
+| `npm run test:watch` | Run unit tests in watch mode         |
+
+## Documentation
+
+Everything lives in [`docs/`](./docs/):
+
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — tech stack, data flow, game-loop state machine, Firebase schema
+- **[GETTING_STARTED.md](./docs/GETTING_STARTED.md)** — local setup, env vars, Firebase setup, how to play
+- **[PHASES.md](./docs/PHASES.md)** — phase-by-phase feature history and test coverage
+- **[SCORING.md](./docs/SCORING.md)** — exact scoring rules
+- **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — deploy to Vercel (free) for your team
+- **[FIREBASE_RULES.md](./docs/FIREBASE_RULES.md)** — current Realtime Database security rules + data shape
+
+## Tests
+
 ```bash
-npm install     # install dependencies
-npm run dev     # start Vite dev server
-npm test        # run vitest unit tests
-npm run build   # typecheck + production build
-npm run preview # preview the production build
+npm test
 ```
+
+- **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19 cases)
+- **Scoring** — `src/lib/scoring.test.ts` (10 cases)
+- **Player logic / timer** — `src/lib/playerLogic.test.ts` (12 cases)
+- **Session storage** — `src/lib/storage.test.ts` (9 cases)
+
+## Hosting
+
+Deploy the static `dist/` build anywhere. `vercel.json` rewrites all routes to `index.html` (SPA). See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**. Security rules for the Realtime Database: **[docs/FIREBASE_RULES.md](./docs/FIREBASE_RULES.md)**.
