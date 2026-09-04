@@ -344,7 +344,13 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
   }, [])
 
   const hostNext = useCallback(async (code: string): Promise<void> => {
+    if (!room || room.hostId !== myPlayerId) return
+    const callerId = myPlayerId
     await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+      if (currentVal !== null) {
+        const hostId = (currentVal as Record<string, unknown>).hostId as string | undefined
+        if (hostId !== callerId) return currentVal
+      }
       if (currentVal === null) return currentVal
       const data = currentVal as Record<string, unknown>
       const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
@@ -396,18 +402,25 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
       return currentVal
     })
-  }, [])
+  }, [room, myPlayerId])
 
   const setMode = useCallback(
     async (code: string, mode: GameMode): Promise<void> => {
+      if (!room || room.hostId !== myPlayerId) return
       await update(ref(db, `rooms/${code}`), { mode })
     },
-    [],
+    [room, myPlayerId],
   )
 
   const jukeboxNavigate = useCallback(
     async (code: string, nav: { type: 'PREV' } | { type: 'NEXT' }): Promise<void> => {
+      if (!room || room.hostId !== myPlayerId) return
+      const callerId = myPlayerId
       await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+        if (currentVal !== null) {
+          const hostId = (currentVal as Record<string, unknown>).hostId as string | undefined
+          if (hostId !== callerId) return currentVal
+        }
         if (currentVal === null) return currentVal
         const data = currentVal as Record<string, unknown>
         const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
@@ -433,14 +446,15 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
         }
       })
     },
-    [],
+    [room, myPlayerId],
   )
 
   const setPlaybackPaused = useCallback(
     async (code: string, paused: boolean): Promise<void> => {
+      if (!room || room.hostId !== myPlayerId) return
       await update(ref(db, `rooms/${code}`), { playbackPaused: paused })
     },
-    [],
+    [room, myPlayerId],
   )
 
   const updateGameState = useCallback(
