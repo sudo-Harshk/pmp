@@ -5,6 +5,7 @@ interface LobbyViewProps {
   myPlayerId: string | null
   isHost: boolean
   onStartSubmission: () => void
+  onLeave: () => void
 }
 
 export default function LobbyView({
@@ -12,6 +13,7 @@ export default function LobbyView({
   myPlayerId,
   isHost,
   onStartSubmission,
+  onLeave,
 }: LobbyViewProps) {
   const players = Object.values(room.players)
 
@@ -70,6 +72,14 @@ export default function LobbyView({
           Waiting for the host to start the game…
         </p>
       )}
+
+      <button
+        type="button"
+        onClick={onLeave}
+        className="mt-3 w-full rounded-lg border border-slate-600 py-2 text-sm font-medium text-slate-300 transition hover:border-rose-500 hover:text-rose-300"
+      >
+        Leave Room
+      </button>
     </div>
   )
 }

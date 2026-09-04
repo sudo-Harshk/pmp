@@ -1,37 +1,78 @@
+import { useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import type { RoomState } from '@/types/game'
 
 interface LeaderboardViewProps {
   room: RoomState
+  onLeave: () => void
 }
 
-export default function LeaderboardView({ room }: LeaderboardViewProps) {
+function fireConfetti(): void {
+  const defaults = { zIndex: 40, spread: 360, ticks: 200, gravity: 0.9 }
+
+  confetti({ ...defaults, particleCount: 100, origin: { y: 0.3 } })
+  setTimeout(() => confetti({ ...defaults, particleCount: 60, angle: 60, origin: { x: 0, y: 0.6 } }), 250)
+  setTimeout(() => confetti({ ...defaults, particleCount: 60, angle: 120, origin: { x: 1, y: 0.6 } }), 400)
+  setTimeout(
+    () =>
+      confetti({
+        ...defaults,
+        particleCount: 120,
+        scalar: 1.2,
+        shapes: ['circle', 'square', 'star'],
+        origin: { y: 0.4 },
+      }),
+    700,
+  )
+}
+
+export default function LeaderboardView({ room, onLeave }: LeaderboardViewProps) {
   const players = Object.values(room.players).sort((a, b) => b.score - a.score)
   const winner = players[0]
+  const tracksPlayed = room.tracks.filter((t) => t.played).length
+
+  useEffect(() => {
+    fireConfetti()
+  }, [])
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-xl">
-      <h2 className="text-center text-2xl font-bold text-white">Final Results</h2>
+    <div className="w-full max-w-md space-y-4">
+      <div
+        className={`rounded-2xl p-px ${
+          winner ? 'bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500' : 'border border-slate-700'
+        }`}
+      >
+        <div className="rounded-[15px] bg-slate-900 px-6 py-6 shadow-xl">
+          <h2 className="text-center text-2xl font-bold text-white">Final Results</h2>
 
-      {winner && (
-        <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center">
-          <p className="text-xs uppercase tracking-wider text-amber-300">Winner</p>
-          <p className="mt-1 text-xl font-bold text-amber-200">🏆 {winner.name}</p>
-          <p className="text-sm text-amber-300">{winner.score} points</p>
+          {winner ? (
+            <div className="mt-4 text-center">
+              <div className="text-4xl">👑</div>
+              <p className="mt-1 text-xs uppercase tracking-wider text-amber-300">Winner</p>
+              <p className="mt-1 text-2xl font-bold text-amber-200">{winner.name}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Stat label="Total Score" value={`${winner.score}`} />
+                <Stat label="Best Round" value={`+${winner.bestRound ?? 0}`} />
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-center text-slate-400">No players.</p>
+          )}
         </div>
-      )}
+      </div>
 
-      <ol className="mt-6 space-y-2">
+      <ol className="space-y-2">
         {players.map((player, index) => (
           <li
             key={player.id}
             className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
               index === 0
-                ? 'border-amber-500/40 bg-slate-800/80'
+                ? 'border-amber-400/50 bg-amber-400/10'
                 : 'border-slate-700 bg-slate-800/60'
-            }`}
+            } ${index === 0 ? 'animate-pulse' : ''}`}
           >
             <span className="flex items-center gap-2 text-sm text-white">
-              <span className="w-5 text-center font-mono text-slate-500">#{index + 1}</span>
+              <span className="w-6 text-center font-mono text-slate-500">#{index + 1}</span>
               {player.name}
               {index === 0 && <span className="text-amber-300">👑</span>}
             </span>
@@ -39,6 +80,29 @@ export default function LeaderboardView({ room }: LeaderboardViewProps) {
           </li>
         ))}
       </ol>
+
+      {tracksPlayed > 0 && (
+        <p className="rounded-lg bg-slate-800/60 px-3 py-2 text-center text-xs text-slate-400">
+          {tracksPlayed} track{tracksPlayed === 1 ? '' : 's'} played
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onLeave}
+        className="w-full rounded-lg border border-slate-600 py-2.5 text-sm font-medium text-slate-300 transition hover:border-rose-500 hover:text-rose-300"
+      >
+        Return to Main Menu
+      </button>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-800/70 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="mt-0.5 font-mono text-lg font-bold text-amber-200">{value}</p>
     </div>
   )
 }

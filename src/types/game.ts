@@ -14,6 +14,7 @@ export interface Player {
   name: string
   score: number
   hasSubmitted?: boolean
+  bestRound?: number
 }
 
 export type RoomStatus = 'LOBBY' | 'SUBMISSION' | 'PLAYING' | 'REVEAL' | 'GAMEOVER'

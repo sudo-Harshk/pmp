@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRoom } from '@/hooks/useRoom'
+import { clearSession, getSession, saveSession } from '@/lib/storage'
 import EntryView from '@/components/game/EntryView'
 import LobbyView from '@/components/game/LobbyView'
 import SubmissionView from '@/components/game/SubmissionView'
@@ -9,7 +10,8 @@ import LeaderboardView from '@/components/game/LeaderboardView'
 import type { RoomState } from '@/types/game'
 
 export default function App() {
-  const [roomCode, setRoomCode] = useState<string | null>(null)
+  const [roomCode, setRoomCode] = useState<string | null>(() => getSession()?.roomCode ?? null)
+
   const {
     room,
     myPlayerId,
@@ -22,7 +24,35 @@ export default function App() {
     hostReveal,
     hostNext,
     updateGameState,
-  } = useRoom(roomCode ?? undefined)
+    leaveRoom,
+  } = useRoom(roomCode ?? undefined, {
+    onInvalidSession: () => {
+      clearSession()
+      setRoomCode(null)
+    },
+  })
+
+  async function handleCreateRoom(hostName: string) {
+    const result = await createRoom(hostName)
+    saveSession(result.roomCode, result.playerId)
+    setRoomCode(result.roomCode)
+    return result
+  }
+
+  async function handleJoinRoom(code: string, playerName: string) {
+    const playerId = await joinRoom(code, playerName)
+    saveSession(code.trim().toUpperCase(), playerId)
+    setRoomCode(code.trim().toUpperCase())
+    return playerId
+  }
+
+  function handleLeave() {
+    if (roomCode && myPlayerId) {
+      void leaveRoom(roomCode, myPlayerId)
+    }
+    clearSession()
+    setRoomCode(null)
+  }
 
   async function handleSubmitSongs(urls: string[]) {
     if (!roomCode || !myPlayerId) return
@@ -34,40 +64,58 @@ export default function App() {
     await submitGuess(roomCode, myPlayerId, guessedName)
   }
 
+  const inRoom = roomCode !== null
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
-      <header className="mb-10 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+    <div className="flex min-h-screen flex-col px-4 py-6">
+      <header className="mb-6 flex h-14 items-center justify-between">
+        <h1 className="text-xl font-extrabold tracking-tight text-white">
           Play My <span className="text-indigo-400">Playlist</span>
         </h1>
-        <p className="mt-3 max-w-md text-slate-400">
-          Whoever guesses which player submitted the song earns the points.
-        </p>
+        {inRoom && (
+          <button
+            type="button"
+            onClick={handleLeave}
+            className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-rose-500 hover:text-rose-300"
+          >
+            Leave Room
+          </button>
+        )}
       </header>
 
-      {!roomCode && (
-        <EntryView onCreateRoom={createRoom} onJoinRoom={joinRoom} onEntered={setRoomCode} />
-      )}
+      <main className="flex flex-1 flex-col items-center justify-center">
+        {!inRoom && (
+          <EntryView
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            onEntered={(code) => {
+              // session already saved by create/join handlers
+              setRoomCode(code)
+            }}
+          />
+        )}
 
-      {roomCode && room === null && (
-        <p className="text-slate-400">Connecting to room {roomCode}…</p>
-      )}
+        {inRoom && room === null && (
+          <p className="text-slate-400">Connecting to room {roomCode}…</p>
+        )}
 
-      {roomCode && room && (
-        <Content
-          room={room}
-          myPlayerId={myPlayerId}
-          isHost={isHost}
-          onStartSubmission={() => roomCode && startSubmission(roomCode)}
-          onSubmitSongs={handleSubmitSongs}
-          onGuess={handleGuess}
-          onUpdateGameState={(updates: Partial<RoomState>) =>
-            roomCode && updateGameState(roomCode, updates)
-          }
-          onHostReveal={() => roomCode && hostReveal(roomCode)}
-          onNext={() => roomCode && hostNext(roomCode)}
-        />
-      )}
+        {inRoom && room && (
+          <Content
+            room={room}
+            myPlayerId={myPlayerId}
+            isHost={isHost}
+            onStartSubmission={() => roomCode && startSubmission(roomCode)}
+            onSubmitSongs={handleSubmitSongs}
+            onGuess={handleGuess}
+            onUpdateGameState={(updates: Partial<RoomState>) =>
+              roomCode && updateGameState(roomCode, updates)
+            }
+            onHostReveal={() => roomCode && hostReveal(roomCode)}
+            onNext={() => roomCode && hostNext(roomCode)}
+            onLeave={handleLeave}
+          />
+        )}
+      </main>
     </div>
   )
 }
@@ -82,6 +130,7 @@ interface ContentProps {
   onUpdateGameState: (updates: Partial<RoomState>) => void
   onHostReveal: () => void
   onNext: () => void
+  onLeave: () => void
 }
 
 function Content({
@@ -94,6 +143,7 @@ function Content({
   onUpdateGameState,
   onHostReveal,
   onNext,
+  onLeave,
 }: ContentProps) {
   switch (room.status) {
     case 'LOBBY':
@@ -103,6 +153,7 @@ function Content({
           myPlayerId={myPlayerId}
           isHost={isHost}
           onStartSubmission={onStartSubmission}
+          onLeave={onLeave}
         />
       )
     case 'SUBMISSION':
@@ -123,7 +174,7 @@ function Content({
     case 'REVEAL':
       return <RevealView room={room} isHost={isHost} onNext={onNext} />
     case 'GAMEOVER':
-      return <LeaderboardView room={room} />
+      return <LeaderboardView room={room} onLeave={onLeave} />
     default:
       return null
   }

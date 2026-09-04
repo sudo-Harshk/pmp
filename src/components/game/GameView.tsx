@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RoomState } from '@/types/game'
 import YouTubePlayer from '@/components/YouTubePlayer'
 import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
@@ -27,6 +27,7 @@ export default function GameView({
   const myGuess = myPlayerId ? room.guesses[myPlayerId] : undefined
   const guessCount = Object.keys(room.guesses).length
   const timeUp = room.timerSeconds <= 0
+  const [hideVideo, setHideVideo] = useState(false)
 
   const timerRef = useRef(room.timerSeconds)
   timerRef.current = room.timerSeconds
@@ -60,13 +61,42 @@ export default function GameView({
       </div>
 
       <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-xl">
-        <YouTubePlayer
-          videoId={track.videoId}
-          isPlaying={!timeUp}
-          onEnded={() => {
-            /* handled by timer */
-          }}
-        />
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-300">Hidden Video (Audio-Only)</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideVideo}
+            onClick={() => setHideVideo((v) => !v)}
+            className={`relative h-6 w-11 rounded-full transition ${
+              hideVideo ? 'bg-indigo-500' : 'bg-slate-700'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                hideVideo ? 'left-[22px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video">
+          <YouTubePlayer
+            videoId={track.videoId}
+            isPlaying={!timeUp}
+            onEnded={() => {
+              /* handled by timer */
+            }}
+          />
+          {hideVideo && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/95">
+              <AudioMask />
+              <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-indigo-300">
+                Audio Only
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-sm">
@@ -116,6 +146,33 @@ export default function GameView({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function AudioMask() {
+  const bars = [0.1, 0.25, 0.4, 0.55, 0.7]
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative flex h-28 w-28 items-center justify-center">
+        <div className="h-24 w-24 animate-spin rounded-full bg-gradient-to-br from-slate-700 via-slate-800 to-black [animation-duration:3s] shadow-inner" />
+        <div className="absolute inset-6 rounded-full bg-slate-950" />
+        <div className="absolute inset-11 rounded-full bg-indigo-500" />
+      </div>
+      <div className="flex h-12 items-end gap-1.5">
+        {bars.map((delay, i) => (
+          <span
+            key={i}
+            className="w-2 origin-bottom rounded-full bg-indigo-400"
+            style={{
+              height: '100%',
+              transformOrigin: 'bottom',
+              animation: `equalize 0.8s ease-in-out infinite`,
+              animationDelay: `${delay}s`,
+            }}
+          />
+        ))}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import {
   get,
   onValue,
   ref,
+  remove,
   runTransaction,
   set,
   update,
@@ -12,6 +13,7 @@ import { db } from '@/lib/firebase'
 import { extractVideoId, processSubmissions } from '@/lib/youtube'
 import { calculateRoundScores } from '@/lib/scoring'
 import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
+import { clearSession, getSession } from '@/lib/storage'
 import type {
   PlaylistTrack,
   Player,
@@ -68,6 +70,7 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
       name: player.name ?? 'Unknown',
       score: typeof player.score === 'number' ? player.score : 0,
       hasSubmitted: player.hasSubmitted ?? false,
+      bestRound: typeof player.bestRound === 'number' ? player.bestRound : 0,
     }
   }
 
@@ -99,9 +102,18 @@ export interface UseRoomResult {
   hostReveal: (roomCode: string) => Promise<void>
   hostNext: (roomCode: string) => Promise<void>
   updateGameState: (roomCode: string, updates: Partial<RoomState>) => Promise<void>
+  leaveRoom: (roomCode: string, playerId: string) => Promise<void>
 }
 
-export function useRoom(roomCode?: string): UseRoomResult {
+interface UseRoomOptions {
+  onInvalidSession?: () => void
+}
+
+export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomResult {
+  const { onInvalidSession } = options ?? {}
+  const onInvalidSessionRef = useRef(onInvalidSession)
+  onInvalidSessionRef.current = onInvalidSession
+
   const [room, setRoom] = useState<RoomState | null>(null)
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null)
   const roomRef = useRef(room)
@@ -127,6 +139,17 @@ export function useRoom(roomCode?: string): UseRoomResult {
     return () => unsubscribe()
   }, [roomCode])
 
+  useEffect(() => {
+    if (!room || myPlayerId !== null) return
+    const session = getSession()
+    if (session && session.roomCode === room.roomCode && room.players[session.playerId]) {
+      setMyPlayerId(session.playerId)
+    } else {
+      clearSession()
+      onInvalidSessionRef.current?.()
+    }
+  }, [room, myPlayerId])
+
   const createRoom = useCallback(
     async (hostName: string): Promise<{ roomCode: string; playerId: string }> => {
       let code = generateRoomCode()
@@ -142,7 +165,7 @@ export function useRoom(roomCode?: string): UseRoomResult {
         roomCode: code,
         status: 'LOBBY',
         hostId,
-        players: { [hostId]: { id: hostId, name: hostName, score: 0, hasSubmitted: false } },
+        players: { [hostId]: { id: hostId, name: hostName, score: 0, hasSubmitted: false, bestRound: 0 } },
         tracks: [],
         currentTrackIndex: 0,
         timerSeconds: SNIPPET_DURATION_SECONDS,
@@ -174,6 +197,7 @@ export function useRoom(roomCode?: string): UseRoomResult {
         name: playerName,
         score: 0,
         hasSubmitted: false,
+        bestRound: 0,
       }
       await update(ref(db, `rooms/${code}/players`), { [playerId]: player })
       setMyPlayerId(playerId)
@@ -257,7 +281,12 @@ export function useRoom(roomCode?: string): UseRoomResult {
 
       const updatedPlayers: Record<string, Player> = {}
       for (const [id, player] of Object.entries(players)) {
-        updatedPlayers[id] = { ...player, score: scores[id] ?? player.score ?? 0 }
+        const roundDelta = deltas[id] ?? 0
+        updatedPlayers[id] = {
+          ...player,
+          score: scores[id] ?? player.score ?? 0,
+          bestRound: Math.max(player.bestRound ?? 0, roundDelta),
+        }
       }
 
       const updatedTracks = tracks.map((t, i) =>
@@ -303,6 +332,14 @@ export function useRoom(roomCode?: string): UseRoomResult {
     [],
   )
 
+  const leaveRoom = useCallback(
+    async (code: string, playerId: string): Promise<void> => {
+      const playerRef = ref(db, `rooms/${code}/players/${playerId}`)
+      await remove(playerRef)
+    },
+    [],
+  )
+
   const isHost = room !== null && myPlayerId !== null && room.hostId === myPlayerId
 
   return {
@@ -317,5 +354,6 @@ export function useRoom(roomCode?: string): UseRoomResult {
     hostReveal,
     hostNext,
     updateGameState,
+    leaveRoom,
   }
 }
