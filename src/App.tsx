@@ -1,59 +1,37 @@
-import { useMemo, useState } from 'react'
-import RoomCard from '@/components/RoomCard'
-import SongSubmissionForm from '@/components/SongSubmissionForm'
-import DedupPreview from '@/components/DedupPreview'
-import PlayerStage from '@/components/PlayerStage'
-import { processSubmissions } from '@/lib/youtube'
-import type { PlaylistTrack, Player, RoomState, Submission } from '@/types/game'
-
-type Phase =
-  | { stage: 'lobby' }
-  | { stage: 'submission'; roomCode: string; player: Player }
-  | { stage: 'preview'; roomCode: string; player: Player; tracks: PlaylistTrack[] }
-  | { stage: 'playback'; roomCode: string; player: Player; tracks: PlaylistTrack[] }
+import { useState } from 'react'
+import { useRoom } from '@/hooks/useRoom'
+import EntryView from '@/components/game/EntryView'
+import LobbyView from '@/components/game/LobbyView'
+import SubmissionView from '@/components/game/SubmissionView'
+import GameView from '@/components/game/GameView'
+import RevealView from '@/components/game/RevealView'
+import LeaderboardView from '@/components/game/LeaderboardView'
+import type { RoomState } from '@/types/game'
 
 export default function App() {
-  const [phase, setPhase] = useState<Phase>({ stage: 'lobby' })
+  const [roomCode, setRoomCode] = useState<string | null>(null)
+  const {
+    room,
+    myPlayerId,
+    isHost,
+    createRoom,
+    joinRoom,
+    submitSongs,
+    submitGuess,
+    startSubmission,
+    hostReveal,
+    hostNext,
+    updateGameState,
+  } = useRoom(roomCode ?? undefined)
 
-  const roomState = useMemo<RoomState | null>(() => {
-    if (
-      phase.stage === 'submission' ||
-      phase.stage === 'preview' ||
-      phase.stage === 'playback'
-    ) {
-      return {
-        roomCode: phase.roomCode,
-        status: 'PLAYING',
-        players: { [phase.player.id]: phase.player },
-        tracks: 'tracks' in phase ? phase.tracks : [],
-      }
-    }
-    return null
-  }, [phase])
-
-  function handleJoin(name: string, roomCode: string) {
-    const player: Player = { id: crypto.randomUUID(), name, score: 0 }
-    setPhase({ stage: 'submission', roomCode, player })
+  async function handleSubmitSongs(urls: string[]) {
+    if (!roomCode || !myPlayerId) return
+    await submitSongs(roomCode, myPlayerId, urls)
   }
 
-  function handleSubmit(submissions: Submission[]) {
-    if (phase.stage !== 'submission') return
-    const tracks = processSubmissions(submissions)
-    setPhase({ stage: 'preview', roomCode: phase.roomCode, player: phase.player, tracks })
-  }
-
-  function handleReset() {
-    setPhase({ stage: 'lobby' })
-  }
-
-  function handleStartPlayback() {
-    if (phase.stage !== 'preview') return
-    setPhase({ stage: 'playback', roomCode: phase.roomCode, player: phase.player, tracks: phase.tracks })
-  }
-
-  function handleBackToPreview() {
-    if (phase.stage !== 'playback') return
-    setPhase({ stage: 'preview', roomCode: phase.roomCode, player: phase.player, tracks: phase.tracks })
+  async function handleGuess(guessedName: string) {
+    if (!roomCode || !myPlayerId) return
+    await submitGuess(roomCode, myPlayerId, guessedName)
   }
 
   return (
@@ -63,64 +41,90 @@ export default function App() {
           Play My <span className="text-indigo-400">Playlist</span>
         </h1>
         <p className="mt-3 max-w-md text-slate-400">
-          Submit your songs, deduplicate the list, and get ready to guess what your friends picked.
+          Whoever guesses which player submitted the song earns the points.
         </p>
       </header>
 
-      {phase.stage === 'lobby' && <RoomCard onJoin={handleJoin} />}
-
-      {phase.stage === 'submission' && (
-        <div className="flex w-full max-w-xl flex-col items-center gap-4">
-          <RoomBanner roomCode={phase.roomCode} playerName={phase.player.name} />
-          <SongSubmissionForm playerName={phase.player.name} onSubmit={handleSubmit} />
-        </div>
+      {!roomCode && (
+        <EntryView onCreateRoom={createRoom} onJoinRoom={joinRoom} onEntered={setRoomCode} />
       )}
 
-      {phase.stage === 'preview' && (
-        <div className="flex w-full max-w-xl flex-col items-center gap-4">
-          <RoomBanner roomCode={phase.roomCode} playerName={phase.player.name} />
-          <DedupPreview
-            tracks={phase.tracks}
-            onReset={handleReset}
-            onPlay={handleStartPlayback}
-          />
-        </div>
+      {roomCode && room === null && (
+        <p className="text-slate-400">Connecting to room {roomCode}…</p>
       )}
 
-      {phase.stage === 'playback' && (
-        <div className="flex w-full flex-col items-center gap-4">
-          <RoomBanner roomCode={phase.roomCode} playerName={phase.player.name} />
-          <PlayerStage tracks={phase.tracks} onBack={handleBackToPreview} />
-        </div>
-      )}
-
-      {roomState && (
-        <footer className="mt-8 text-center text-xs text-slate-500">
-          Room {roomState.roomCode} · Status:{' '}
-          <span className="font-semibold text-indigo-300">{roomState.status}</span> ·{' '}
-          {Object.values(roomState.players).length} player
-          {Object.values(roomState.players).length === 1 ? '' : 's'} · {roomState.tracks.length}{' '}
-          unique track{roomState.tracks.length === 1 ? '' : 's'}
-        </footer>
+      {roomCode && room && (
+        <Content
+          room={room}
+          myPlayerId={myPlayerId}
+          isHost={isHost}
+          onStartSubmission={() => roomCode && startSubmission(roomCode)}
+          onSubmitSongs={handleSubmitSongs}
+          onGuess={handleGuess}
+          onUpdateGameState={(updates: Partial<RoomState>) =>
+            roomCode && updateGameState(roomCode, updates)
+          }
+          onHostReveal={() => roomCode && hostReveal(roomCode)}
+          onNext={() => roomCode && hostNext(roomCode)}
+        />
       )}
     </div>
   )
 }
 
-interface RoomBannerProps {
-  roomCode: string
-  playerName: string
+interface ContentProps {
+  room: RoomState
+  myPlayerId: string | null
+  isHost: boolean
+  onStartSubmission: () => void
+  onSubmitSongs: (urls: string[]) => void
+  onGuess: (guessedName: string) => void
+  onUpdateGameState: (updates: Partial<RoomState>) => void
+  onHostReveal: () => void
+  onNext: () => void
 }
 
-function RoomBanner({ roomCode, playerName }: RoomBannerProps) {
-  return (
-    <div className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3">
-      <span className="text-sm text-slate-400">Room</span>
-      <span className="rounded-lg bg-indigo-500/20 px-2 py-0.5 font-mono font-bold text-indigo-300">
-        {roomCode}
-      </span>
-      <span className="text-slate-600">•</span>
-      <span className="text-sm text-slate-300">{playerName}</span>
-    </div>
-  )
+function Content({
+  room,
+  myPlayerId,
+  isHost,
+  onStartSubmission,
+  onSubmitSongs,
+  onGuess,
+  onUpdateGameState,
+  onHostReveal,
+  onNext,
+}: ContentProps) {
+  switch (room.status) {
+    case 'LOBBY':
+      return (
+        <LobbyView
+          room={room}
+          myPlayerId={myPlayerId}
+          isHost={isHost}
+          onStartSubmission={onStartSubmission}
+        />
+      )
+    case 'SUBMISSION':
+      return (
+        <SubmissionView room={room} myPlayerId={myPlayerId} onSubmitSongs={onSubmitSongs} />
+      )
+    case 'PLAYING':
+      return (
+        <GameView
+          room={room}
+          myPlayerId={myPlayerId}
+          isHost={isHost}
+          onSubmitGuess={onGuess}
+          onUpdateGameState={onUpdateGameState}
+          onHostReveal={onHostReveal}
+        />
+      )
+    case 'REVEAL':
+      return <RevealView room={room} isHost={isHost} onNext={onNext} />
+    case 'GAMEOVER':
+      return <LeaderboardView room={room} />
+    default:
+      return null
+  }
 }
