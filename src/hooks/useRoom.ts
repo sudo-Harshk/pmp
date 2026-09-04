@@ -353,11 +353,15 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
       if (status === 'SUBMISSION' || (status === 'PLAYING' && (data.mode as GameMode) === 'JUKEBOX' && tracks.length === 0)) {
         // Begin playback at the first track once submissions are in.
+        const mode = (data.mode as GameMode) ?? 'GUESSING'
+        const tracksWithPlayed =
+          tracks.length > 0 ? tracks.map((t, i) => (i === 0 ? { ...t, played: true } : t)) : tracks
         return {
           ...data,
           status: 'PLAYING',
           currentTrackIndex: 0,
-          timerSeconds: SNIPPET_DURATION_SECONDS,
+          timerSeconds: mode === 'JUKEBOX' ? JUKEBOX_MAX_SECONDS : SNIPPET_DURATION_SECONDS,
+          tracks: tracksWithPlayed,
           guesses: {},
           scoreDeltas: null,
           playbackPaused: false,

@@ -6,7 +6,9 @@ import { extractVideoId } from '@/lib/youtube'
 interface SubmissionViewProps {
   room: RoomState
   myPlayerId: string | null
+  isHost: boolean
   onSubmitSongs: (urls: string[]) => void
+  onNext: () => void
 }
 
 const DEFAULT_COUNT = 3
@@ -15,7 +17,9 @@ const MAX_SONGS = 10
 export default function SubmissionView({
   room,
   myPlayerId,
+  isHost,
   onSubmitSongs,
+  onNext,
 }: SubmissionViewProps) {
   const [songCount, setSongCount] = useState(DEFAULT_COUNT)
   const [urls, setUrls] = useState<string[]>(() =>
@@ -145,11 +149,21 @@ export default function SubmissionView({
           ))}
         </ul>
 
-        {allSubmitted && (
-          <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-xs font-semibold text-emerald-300">
-            Everyone is ready! The host will start playback.
-          </p>
-        )}
+        {allSubmitted &&
+          (isHost ? (
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={room.tracks.length === 0}
+              className="mt-4 w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            >
+              {room.mode === 'JUKEBOX' ? 'Start Playback' : 'Start Game'}
+            </button>
+          ) : (
+            <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-xs font-semibold text-emerald-300">
+              Everyone is ready! Waiting for host to start...
+            </p>
+          ))}
       </div>
     </div>
   )

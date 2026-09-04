@@ -177,7 +177,13 @@ function Content({
       )
     case 'SUBMISSION':
       return (
-        <SubmissionView room={room} myPlayerId={myPlayerId} onSubmitSongs={onSubmitSongs} />
+        <SubmissionView
+          room={room}
+          myPlayerId={myPlayerId}
+          isHost={isHost}
+          onSubmitSongs={onSubmitSongs}
+          onNext={onNext}
+        />
       )
     case 'PLAYING':
       if (room.mode === 'JUKEBOX') {
