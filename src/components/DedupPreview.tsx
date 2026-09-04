@@ -3,9 +3,10 @@ import type { PlaylistTrack } from '@/types/game'
 interface DedupPreviewProps {
   tracks: PlaylistTrack[]
   onReset: () => void
+  onPlay?: () => void
 }
 
-export default function DedupPreview({ tracks, onReset }: DedupPreviewProps) {
+export default function DedupPreview({ tracks, onReset, onPlay }: DedupPreviewProps) {
   const duplicates = tracks.filter((t) => t.submittedBy.length > 1)
   const singles = tracks.filter((t) => t.submittedBy.length === 1)
 
@@ -62,6 +63,17 @@ export default function DedupPreview({ tracks, onReset }: DedupPreviewProps) {
           <span className="font-semibold text-emerald-400">{singles.length} track{singles.length === 1 ? '' : 's'}</span>{' '}
           submitted by a single player.
         </p>
+      )}
+
+      {onPlay && (
+        <button
+          type="button"
+          onClick={onPlay}
+          disabled={tracks.length === 0}
+          className="mt-5 w-full rounded-lg bg-emerald-500 py-2.5 font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+        >
+          Start Playback ({tracks.length} track{tracks.length === 1 ? '' : 's'})
+        </button>
       )}
     </div>
   )

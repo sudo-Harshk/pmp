@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import RoomCard from '@/components/RoomCard'
 import SongSubmissionForm from '@/components/SongSubmissionForm'
 import DedupPreview from '@/components/DedupPreview'
+import PlayerStage from '@/components/PlayerStage'
 import { processSubmissions } from '@/lib/youtube'
 import type { PlaylistTrack, Player, RoomState, Submission } from '@/types/game'
 
@@ -9,17 +10,22 @@ type Phase =
   | { stage: 'lobby' }
   | { stage: 'submission'; roomCode: string; player: Player }
   | { stage: 'preview'; roomCode: string; player: Player; tracks: PlaylistTrack[] }
+  | { stage: 'playback'; roomCode: string; player: Player; tracks: PlaylistTrack[] }
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>({ stage: 'lobby' })
 
   const roomState = useMemo<RoomState | null>(() => {
-    if (phase.stage === 'submission' || phase.stage === 'preview') {
+    if (
+      phase.stage === 'submission' ||
+      phase.stage === 'preview' ||
+      phase.stage === 'playback'
+    ) {
       return {
         roomCode: phase.roomCode,
-        status: phase.stage === 'submission' ? 'SUBMISSION' : 'PLAYING',
+        status: 'PLAYING',
         players: { [phase.player.id]: phase.player },
-        tracks: phase.stage === 'preview' ? phase.tracks : [],
+        tracks: 'tracks' in phase ? phase.tracks : [],
       }
     }
     return null
@@ -38,6 +44,16 @@ export default function App() {
 
   function handleReset() {
     setPhase({ stage: 'lobby' })
+  }
+
+  function handleStartPlayback() {
+    if (phase.stage !== 'preview') return
+    setPhase({ stage: 'playback', roomCode: phase.roomCode, player: phase.player, tracks: phase.tracks })
+  }
+
+  function handleBackToPreview() {
+    if (phase.stage !== 'playback') return
+    setPhase({ stage: 'preview', roomCode: phase.roomCode, player: phase.player, tracks: phase.tracks })
   }
 
   return (
@@ -63,7 +79,18 @@ export default function App() {
       {phase.stage === 'preview' && (
         <div className="flex w-full max-w-xl flex-col items-center gap-4">
           <RoomBanner roomCode={phase.roomCode} playerName={phase.player.name} />
-          <DedupPreview tracks={phase.tracks} onReset={handleReset} />
+          <DedupPreview
+            tracks={phase.tracks}
+            onReset={handleReset}
+            onPlay={handleStartPlayback}
+          />
+        </div>
+      )}
+
+      {phase.stage === 'playback' && (
+        <div className="flex w-full flex-col items-center gap-4">
+          <RoomBanner roomCode={phase.roomCode} playerName={phase.player.name} />
+          <PlayerStage tracks={phase.tracks} onBack={handleBackToPreview} />
         </div>
       )}
 
