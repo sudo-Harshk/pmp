@@ -25,6 +25,7 @@ export function calculateRoundScores(
   const correctNames = new Set(submitters)
 
   for (const guesserId of Object.keys(guesses)) {
+    if (!players[guesserId]) continue
     const guessedName = guesses[guesserId]
     const delta = correctNames.has(guessedName) ? CORRECT_GUESS_POINTS : 0
     deltas[guesserId] = (deltas[guesserId] ?? 0) + delta
@@ -32,7 +33,7 @@ export function calculateRoundScores(
   }
 
   const incorrectGuessCount = Object.keys(guesses).filter(
-    (guesserId) => !correctNames.has(guesses[guesserId]),
+    (guesserId) => players[guesserId] && !correctNames.has(guesses[guesserId]),
   ).length
 
   if (incorrectGuessCount > 0 && submitters.length > 0) {
@@ -45,6 +46,7 @@ export function calculateRoundScores(
       .filter((id): id is string => id !== null)
 
     resolvedSubmitterIds.forEach((submitterId, index) => {
+      if (!players[submitterId]) return
       const share = base + (index < rem ? 1 : 0)
       deltas[submitterId] = (deltas[submitterId] ?? 0) + share
       scores[submitterId] = (scores[submitterId] ?? 0) + share

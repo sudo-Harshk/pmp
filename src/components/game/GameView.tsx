@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { RoomState } from '@/types/game'
 import YouTubePlayer from '@/components/YouTubePlayer'
 import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
@@ -8,8 +8,7 @@ interface GameViewProps {
   myPlayerId: string | null
   isHost: boolean
   onSubmitGuess: (guessedName: string) => void
-  onUpdateGameState: (updates: Partial<RoomState>) => void
-  onHostReveal: () => void
+  onSkip: () => void
 }
 
 export default function GameView({
@@ -17,8 +16,7 @@ export default function GameView({
   myPlayerId,
   isHost,
   onSubmitGuess,
-  onUpdateGameState,
-  onHostReveal,
+  onSkip,
 }: GameViewProps) {
   const track = room.tracks[room.currentTrackIndex]
   const players = Object.values(room.players)
@@ -29,9 +27,7 @@ export default function GameView({
   const timeUp = room.timerSeconds <= 0
   const [hideVideo, setHideVideo] = useState(false)
   const [voteLocked, setVoteLocked] = useState(false)
-
-  const timerRef = useRef(room.timerSeconds)
-  timerRef.current = room.timerSeconds
+  const [playerError, setPlayerError] = useState<number | null>(null)
 
   const hasVoted = Boolean(myGuess) || voteLocked
 
@@ -41,20 +37,18 @@ export default function GameView({
     onSubmitGuess(name)
   }
 
-  useEffect(() => {
-    if (!isHost || room.status !== 'PLAYING') return
-    if (timeUp) {
-      onHostReveal()
-      return
+  function handlePlayerError(code: number) {
+    if ([100, 101, 150].includes(code)) {
+      console.warn(`YouTube player error ${code} for video ${track?.videoId} — unplayable, host can skip`)
+    } else {
+      console.warn(`YouTube player error ${code} for video ${track?.videoId}`)
     }
-    const id = window.setInterval(() => {
-      onUpdateGameState({ timerSeconds: Math.max(0, timerRef.current - 1) })
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [isHost, room.status, timeUp, onHostReveal, onUpdateGameState])
+    setPlayerError(code)
+  }
 
   useEffect(() => {
     setVoteLocked(false)
+    setPlayerError(null)
   }, [room.currentTrackIndex, room.status])
 
   if (!track) {
@@ -100,6 +94,7 @@ export default function GameView({
             onEnded={() => {
               /* handled by timer */
             }}
+            onError={handlePlayerError}
           />
           {hideVideo && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/95">
@@ -110,6 +105,24 @@ export default function GameView({
             </div>
           )}
         </div>
+
+        {playerError !== null && (
+          <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs font-semibold text-amber-300">
+            { [100, 101, 150].includes(playerError)
+              ? `Video unplayable (error ${playerError}). Host can skip.`
+              : `Player error ${playerError}. Host can skip if needed.`}
+          </div>
+        )}
+
+        {isHost && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="mt-3 w-full rounded-lg border border-amber-500/40 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/10"
+          >
+            Skip Unplayable Track
+          </button>
+        )}
 
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-sm">

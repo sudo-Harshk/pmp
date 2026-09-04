@@ -27,7 +27,9 @@ function fireConfetti(): void {
 }
 
 export default function LeaderboardView({ room, onLeave }: LeaderboardViewProps) {
-  const players = Object.values(room.players).sort((a, b) => b.score - a.score)
+  const players = Object.values(room.players).sort(
+    (a, b) => b.score - a.score || (b.bestRound ?? 0) - (a.bestRound ?? 0) || a.name.localeCompare(b.name),
+  )
   const winner = players[0]
   const tracksPlayed = room.tracks.filter((t) => t.played).length
 

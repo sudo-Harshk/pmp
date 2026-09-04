@@ -23,12 +23,10 @@ export default function App() {
     submitSongs,
     submitGuess,
     startSubmission,
-    hostReveal,
     hostNext,
     setMode,
     jukeboxNavigate,
     setPlaybackPaused,
-    updateGameState,
     leaveRoom,
   } = useRoom(roomCode ?? undefined, {
     onInvalidSession: () => {
@@ -112,10 +110,6 @@ export default function App() {
             onStartSubmission={() => roomCode && startSubmission(roomCode)}
             onSubmitSongs={handleSubmitSongs}
             onGuess={handleGuess}
-            onUpdateGameState={(updates: Partial<RoomState>) =>
-              roomCode && updateGameState(roomCode, updates)
-            }
-            onHostReveal={() => roomCode && hostReveal(roomCode)}
             onNext={() => roomCode && hostNext(roomCode)}
             onSetMode={(mode: GameMode) => roomCode && setMode(roomCode, mode)}
             onJukeboxNavigate={(nav: { type: 'PREV' } | { type: 'NEXT' }) =>
@@ -139,8 +133,6 @@ interface ContentProps {
   onStartSubmission: () => void
   onSubmitSongs: (urls: string[]) => void
   onGuess: (guessedName: string) => void
-  onUpdateGameState: (updates: Partial<RoomState>) => void
-  onHostReveal: () => void
   onNext: () => void
   onSetMode: (mode: GameMode) => void
   onJukeboxNavigate: (nav: { type: 'PREV' } | { type: 'NEXT' }) => void
@@ -155,8 +147,6 @@ function Content({
   onStartSubmission,
   onSubmitSongs,
   onGuess,
-  onUpdateGameState,
-  onHostReveal,
   onNext,
   onSetMode,
   onJukeboxNavigate,
@@ -202,8 +192,7 @@ function Content({
           myPlayerId={myPlayerId}
           isHost={isHost}
           onSubmitGuess={onGuess}
-          onUpdateGameState={onUpdateGameState}
-          onHostReveal={onHostReveal}
+          onSkip={onNext}
         />
       )
     case 'REVEAL':

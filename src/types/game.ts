@@ -51,6 +51,7 @@ export interface RoomState {
   tracks: PlaylistTrack[]
   currentTrackIndex: number
   timerSeconds: number
+  roundStartTime?: number
   guesses: Record<string, string>
   scoreDeltas?: ScoreDelta[]
   playbackPaused?: boolean

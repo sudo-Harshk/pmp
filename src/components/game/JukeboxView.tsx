@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { RoomState } from '@/types/game'
 import YouTubePlayer from '@/components/YouTubePlayer'
 import { JUKEBOX_MAX_SECONDS } from '@/lib/playerLogic'
@@ -18,6 +19,20 @@ export default function JukeboxView({
   const track = room.tracks[room.currentTrackIndex]
   const paused = room.playbackPaused === true
   const isLast = room.currentTrackIndex >= room.tracks.length - 1
+  const [playerError, setPlayerError] = useState<number | null>(null)
+
+  function handlePlayerError(code: number) {
+    if ([100, 101, 150].includes(code)) {
+      console.warn(`YouTube player error ${code} for video ${track?.videoId} — unplayable, host can skip`)
+    } else {
+      console.warn(`YouTube player error ${code} for video ${track?.videoId}`)
+    }
+    setPlayerError(code)
+  }
+
+  useEffect(() => {
+    setPlayerError(null)
+  }, [room.currentTrackIndex, room.status])
 
   if (!track) {
     return <p className="text-slate-400">No track available.</p>
@@ -43,8 +58,27 @@ export default function JukeboxView({
             onEnded={() => {
               if (isHost && !isLast) onNavigate({ type: 'NEXT' })
             }}
+            onError={handlePlayerError}
           />
         </div>
+
+        {playerError !== null && (
+          <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs font-semibold text-amber-300">
+            {[100, 101, 150].includes(playerError)
+              ? `Video unplayable (error ${playerError}). Host can skip.`
+              : `Player error ${playerError}. Host can skip if needed.`}
+          </div>
+        )}
+
+        {isHost && (
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'NEXT' })}
+            className="mt-3 w-full rounded-lg border border-amber-500/40 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/10"
+          >
+            Skip Unplayable Track
+          </button>
+        )}
 
         <div className="mt-4 rounded-lg bg-slate-800/70 px-4 py-3 text-center">
           <p className="text-xs uppercase tracking-wider text-slate-400">Currently playing — submitted by</p>

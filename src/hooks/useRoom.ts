@@ -91,6 +91,7 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
       typeof data.currentTrackIndex === 'number' ? data.currentTrackIndex : 0,
     timerSeconds:
       typeof data.timerSeconds === 'number' ? data.timerSeconds : SNIPPET_DURATION_SECONDS,
+    roundStartTime: typeof data.roundStartTime === 'number' ? data.roundStartTime : undefined,
     guesses: (data.guesses as Record<string, string>) ?? {},
     scoreDeltas: Array.isArray(data.scoreDeltas) ? (data.scoreDeltas as ScoreDelta[]) : undefined,
     playbackPaused: data.playbackPaused === true,
@@ -164,29 +165,15 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     }
   }, [room, myPlayerId])
 
-  const intermissionRef = useRef(room?.timerSeconds ?? INTERMISSION_DURATION_SECONDS)
-
+  // Host failover — if hostId not in players, promote first remaining player
   useEffect(() => {
     if (!room) return
-    intermissionRef.current = room.timerSeconds
-  }, [room])
-
-  useEffect(() => {
-    if (!room) return
-    const isHostNow = room.hostId === myPlayerId && myPlayerId !== null
-    if (room.status !== 'INTERMISSION' || !isHostNow) return
-    if (room.timerSeconds <= 0) {
-      void hostNext(room.roomCode)
-      return
-    }
-    const code = room.roomCode
-    const id = window.setInterval(() => {
-      const next = Math.max(0, (intermissionRef.current ?? 0) - 1)
-      intermissionRef.current = next
-      void update(ref(db, `rooms/${code}`), { timerSeconds: next })
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [room?.status, room?.timerSeconds, myPlayerId])
+    if (room.players[room.hostId]) return
+    const remainingIds = Object.keys(room.players)
+    if (remainingIds.length === 0) return
+    const newHostId = remainingIds[0]
+    void update(ref(db, `rooms/${room.roomCode}`), { hostId: newHostId })
+  }, [room?.hostId, room?.players])
 
   const createRoom = useCallback(
     async (hostName: string): Promise<{ roomCode: string; playerId: string }> => {
@@ -367,11 +354,32 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           status: 'PLAYING',
           currentTrackIndex: 0,
           timerSeconds: mode === 'JUKEBOX' ? JUKEBOX_MAX_SECONDS : SNIPPET_DURATION_SECONDS,
+          roundStartTime: Date.now(),
           tracks: tracksWithPlayed,
           guesses: {},
           scoreDeltas: null,
           playbackPaused: false,
         }
+      }
+
+      // Skip unplayable track during PLAYING (host override)
+      if (status === 'PLAYING') {
+        const mode = (data.mode as GameMode) ?? 'GUESSING'
+        const updatedTracks = tracks.map((t, i) => (i === currentIndex ? { ...t, played: true } : t))
+        if (currentIndex + 1 < tracks.length) {
+          return {
+            ...data,
+            status: 'PLAYING',
+            currentTrackIndex: currentIndex + 1,
+            timerSeconds: mode === 'JUKEBOX' ? JUKEBOX_MAX_SECONDS : SNIPPET_DURATION_SECONDS,
+            roundStartTime: Date.now(),
+            tracks: updatedTracks,
+            guesses: {},
+            scoreDeltas: null,
+            playbackPaused: false,
+          }
+        }
+        return { ...data, status: 'GAMEOVER', tracks: updatedTracks, scoreDeltas: null }
       }
 
       if (status === 'REVEAL') {
@@ -381,6 +389,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
             status: 'INTERMISSION',
             currentTrackIndex: currentIndex + 1,
             timerSeconds: INTERMISSION_DURATION_SECONDS,
+            roundStartTime: Date.now(),
             guesses: {},
             scoreDeltas: null,
             playbackPaused: false,
@@ -394,6 +403,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           ...data,
           status: 'PLAYING',
           timerSeconds: SNIPPET_DURATION_SECONDS,
+          roundStartTime: Date.now(),
           guesses: {},
           scoreDeltas: null,
           playbackPaused: false,
@@ -440,6 +450,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           ...data,
           currentTrackIndex,
           timerSeconds: JUKEBOX_MAX_SECONDS,
+          roundStartTime: Date.now(),
           tracks: updatedTracks,
           scoreDeltas: null,
           playbackPaused: false,
@@ -471,6 +482,49 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     },
     [],
   )
+
+  // Absolute timestamp synchronization — host drives timer via roundStartTime delta
+  useEffect(() => {
+    if (!room) return
+    const isHostNow = room.hostId === myPlayerId && myPlayerId !== null
+    if (!isHostNow) return
+    if (room.status !== 'PLAYING' && room.status !== 'INTERMISSION') return
+
+    const duration =
+      room.status === 'INTERMISSION'
+        ? INTERMISSION_DURATION_SECONDS
+        : room.mode === 'JUKEBOX'
+          ? JUKEBOX_MAX_SECONDS
+          : SNIPPET_DURATION_SECONDS
+
+    if (typeof room.roundStartTime !== 'number') {
+      void update(ref(db, `rooms/${room.roomCode}`), {
+        roundStartTime: Date.now(),
+        timerSeconds: duration,
+      })
+      return
+    }
+
+    const code = room.roomCode
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - (room.roundStartTime as number)) / 1000)
+      const remaining = Math.max(0, duration - elapsed)
+      if (remaining !== room.timerSeconds) {
+        void update(ref(db, `rooms/${code}`), { timerSeconds: remaining })
+      }
+      if (remaining <= 0) {
+        if (room.status === 'PLAYING' && room.mode !== 'JUKEBOX') {
+          void hostReveal(code)
+        } else if (room.status === 'INTERMISSION') {
+          void hostNext(code)
+        }
+      }
+    }
+
+    tick()
+    const id = window.setInterval(tick, 500)
+    return () => window.clearInterval(id)
+  }, [room, myPlayerId, hostReveal, hostNext])
 
   const isHost = room !== null && myPlayerId !== null && room.hostId === myPlayerId
 
