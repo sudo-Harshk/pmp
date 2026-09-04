@@ -54,11 +54,22 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Commit:** `feat: add session persistence, confetti, audio-only mode, and Vercel config`
 
+## Refinements — Intermission, Vote Lock-In & Casual Jukebox Mode
+
+**Goal:** Small game-loop refinements and a casual playback mode without changing the scoring/session core.
+
+- **Types:** `RoomStatus` adds `INTERMISSION`; new `GameMode = 'GUESSING' | 'JUKEBOX'`; `RoomState` gains `mode` (default `GUESSING`) and `playbackPaused`. Sync constants `INTERMISSION_DURATION_SECONDS = 7` and `JUKEBOX_MAX_SECONDS = 180` and pure `navigateJukebox()` helper added to `src/lib/playerLogic.ts`.
+- **Vote lock-in** — `src/components/game/GameView.tsx`: once a player submits a guess, all voting buttons disable immediately via local `voteLocked` state and show `Vote Locked ✅`; state resets on the next track/status change.
+- **Intermission stage** — New `src/components/game/IntermissionView.tsx` plus `useRoom` host ticker: `hostNext` now transitions `REVEAL` → `INTERMISSION` (sets `currentTrackIndex + 1`, `timerSeconds = 7`) or `GAMEOVER` on the last track; a host-only `setInterval` in `useRoom` ticks `timerSeconds` down and auto-calls `hostNext` (`INTERMISSION` → `PLAYING`) at zero. `App.tsx` adds `case 'INTERMISSION'` rendering the banner `Next track starting in X seconds...`.
+- **Casual jukebox mode** — Host toggle in `src/components/game/LobbyView.tsx` (`Mode: Guessing Game | Casual Jukebox`) calls `setMode()`. `src/components/game/JukeboxView.tsx` plays the current track in full (or 180 s max), shows submitter(s) openly, and exposes host-synced `Prev / Next / Pause` via `jukeboxNavigate()` (transaction, `finished` on last `NEXT`) and `setPlaybackPaused()`; guessing `REVEAL`/`INTERMISSION` and voting are skipped. `src/App.tsx` branches `case 'PLAYING'` on `room.mode` to `JukeboxView` vs `GameView`, and `useRoom.fromFirestoreRoom()` defaults legacy rooms to `GUESSING`.
+- **Tests:** `src/lib/playerLogic.test.ts` adds 10 cases — 2 for duration constants + 8 for `navigateJukebox()` (NEXT advance, NEXT on last → finished, PREV step-back/clamp, single-track, empty, out-of-bounds).
+
 ## Test Coverage Overview
 
-| Suite                  | File                     | Cases | Focus                                      |
-| ---------------------- | ------------------------ | ----- | ------------------------------------------ |
-| YouTube                | `youtube.test.ts`        | 19    | ID extraction + dedup                        |
-| Scoring                | `scoring.test.ts`        | 10    | Guess points + submitter bonus distribution |
-| Player logic (timer)   | `playerLogic.test.ts`    | 12    | Countdown transitions + track boundaries   |
-| Session storage        | `storage.test.ts`        | 9     | Persistence round-trip (jsdom)             |
+| Suite                        | File                     | Cases | Focus                                              |
+| ---------------------------- | ------------------------ | ----- | -------------------------------------------------- |
+| YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup                                |
+| Scoring                      | `scoring.test.ts`        | 10    | Guess points + submitter bonus distribution         |
+| Player logic (timer + nav)   | `playerLogic.test.ts`    | 22    | Countdown, track boundaries, intermission/jukebox  |
+| Session storage              | `storage.test.ts`        | 9     | Persistence round-trip (jsdom)                     |
+| **Total**                    |                          | **60**|                                                    |

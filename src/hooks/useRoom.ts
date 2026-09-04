@@ -12,9 +12,15 @@ import {
 import { db } from '@/lib/firebase'
 import { extractVideoId, processSubmissions } from '@/lib/youtube'
 import { calculateRoundScores } from '@/lib/scoring'
-import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
+import {
+  INTERMISSION_DURATION_SECONDS,
+  JUKEBOX_MAX_SECONDS,
+  navigateJukebox,
+  SNIPPET_DURATION_SECONDS,
+} from '@/lib/playerLogic'
 import { clearSession, getSession } from '@/lib/storage'
 import type {
+  GameMode,
   PlaylistTrack,
   Player,
   RoomState,
@@ -78,6 +84,7 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
     roomCode,
     status: (data.status as RoomState['status']) ?? 'LOBBY',
     hostId: (data.hostId as string) ?? '',
+    mode: (data.mode as GameMode) ?? 'GUESSING',
     players,
     tracks: Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : [],
     currentTrackIndex:
@@ -86,6 +93,7 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
       typeof data.timerSeconds === 'number' ? data.timerSeconds : SNIPPET_DURATION_SECONDS,
     guesses: (data.guesses as Record<string, string>) ?? {},
     scoreDeltas: Array.isArray(data.scoreDeltas) ? (data.scoreDeltas as ScoreDelta[]) : undefined,
+    playbackPaused: data.playbackPaused === true,
     createdAt: typeof data.createdAt === 'number' ? data.createdAt : undefined,
   }
 }
@@ -101,6 +109,12 @@ export interface UseRoomResult {
   startSubmission: (roomCode: string) => Promise<void>
   hostReveal: (roomCode: string) => Promise<void>
   hostNext: (roomCode: string) => Promise<void>
+  setMode: (roomCode: string, mode: GameMode) => Promise<void>
+  jukeboxNavigate: (
+    roomCode: string,
+    nav: { type: 'PREV' } | { type: 'NEXT' },
+  ) => Promise<void>
+  setPlaybackPaused: (roomCode: string, paused: boolean) => Promise<void>
   updateGameState: (roomCode: string, updates: Partial<RoomState>) => Promise<void>
   leaveRoom: (roomCode: string, playerId: string) => Promise<void>
 }
@@ -150,6 +164,30 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     }
   }, [room, myPlayerId])
 
+  const intermissionRef = useRef(room?.timerSeconds ?? INTERMISSION_DURATION_SECONDS)
+
+  useEffect(() => {
+    if (!room) return
+    intermissionRef.current = room.timerSeconds
+  }, [room])
+
+  useEffect(() => {
+    if (!room) return
+    const isHostNow = room.hostId === myPlayerId && myPlayerId !== null
+    if (room.status !== 'INTERMISSION' || !isHostNow) return
+    if (room.timerSeconds <= 0) {
+      void hostNext(room.roomCode)
+      return
+    }
+    const code = room.roomCode
+    const id = window.setInterval(() => {
+      const next = Math.max(0, (intermissionRef.current ?? 0) - 1)
+      intermissionRef.current = next
+      void update(ref(db, `rooms/${code}`), { timerSeconds: next })
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [room?.status, room?.timerSeconds, myPlayerId])
+
   const createRoom = useCallback(
     async (hostName: string): Promise<{ roomCode: string; playerId: string }> => {
       let code = generateRoomCode()
@@ -165,6 +203,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
         roomCode: code,
         status: 'LOBBY',
         hostId,
+        mode: 'GUESSING',
         players: { [hostId]: { id: hostId, name: hostName, score: 0, hasSubmitted: false, bestRound: 0 } },
         tracks: [],
         currentTrackIndex: 0,
@@ -310,20 +349,95 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       const data = currentVal as Record<string, unknown>
       const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
       const currentIndex = (data.currentTrackIndex as number) ?? 0
+      const status = data.status as RoomState['status']
 
-      if (currentIndex + 1 < tracks.length) {
+      if (status === 'SUBMISSION' || (status === 'PLAYING' && (data.mode as GameMode) === 'JUKEBOX' && tracks.length === 0)) {
+        // Begin playback at the first track once submissions are in.
         return {
           ...data,
           status: 'PLAYING',
-          currentTrackIndex: currentIndex + 1,
+          currentTrackIndex: 0,
           timerSeconds: SNIPPET_DURATION_SECONDS,
           guesses: {},
           scoreDeltas: null,
+          playbackPaused: false,
         }
       }
-      return { ...data, status: 'GAMEOVER', scoreDeltas: null }
+
+      if (status === 'REVEAL') {
+        if (currentIndex + 1 < tracks.length) {
+          return {
+            ...data,
+            status: 'INTERMISSION',
+            currentTrackIndex: currentIndex + 1,
+            timerSeconds: INTERMISSION_DURATION_SECONDS,
+            guesses: {},
+            scoreDeltas: null,
+            playbackPaused: false,
+          }
+        }
+        return { ...data, status: 'GAMEOVER', scoreDeltas: null }
+      }
+
+      if (status === 'INTERMISSION') {
+        return {
+          ...data,
+          status: 'PLAYING',
+          timerSeconds: SNIPPET_DURATION_SECONDS,
+          guesses: {},
+          scoreDeltas: null,
+          playbackPaused: false,
+        }
+      }
+
+      return currentVal
     })
   }, [])
+
+  const setMode = useCallback(
+    async (code: string, mode: GameMode): Promise<void> => {
+      await update(ref(db, `rooms/${code}`), { mode })
+    },
+    [],
+  )
+
+  const jukeboxNavigate = useCallback(
+    async (code: string, nav: { type: 'PREV' } | { type: 'NEXT' }): Promise<void> => {
+      await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+        if (currentVal === null) return currentVal
+        const data = currentVal as Record<string, unknown>
+        const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
+        const currentIndex = (data.currentTrackIndex as number) ?? 0
+
+        if (tracks.length === 0) return currentVal
+
+        const { currentTrackIndex, finished } = navigateJukebox(currentIndex, tracks.length, nav)
+        if (finished) {
+          return { ...data, status: 'GAMEOVER', scoreDeltas: null, playbackPaused: false }
+        }
+
+        const updatedTracks = tracks.map((t, i) =>
+          i === currentTrackIndex ? { ...t, played: true } : t,
+        )
+        return {
+          ...data,
+          currentTrackIndex,
+          timerSeconds: JUKEBOX_MAX_SECONDS,
+          tracks: updatedTracks,
+          scoreDeltas: null,
+          playbackPaused: false,
+        }
+      })
+    },
+    [],
+  )
+
+  const setPlaybackPaused = useCallback(
+    async (code: string, paused: boolean): Promise<void> => {
+      await update(ref(db, `rooms/${code}`), { playbackPaused: paused })
+    },
+    [],
+  )
 
   const updateGameState = useCallback(
     async (code: string, updates: Partial<RoomState>): Promise<void> => {
@@ -353,6 +467,9 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     startSubmission,
     hostReveal,
     hostNext,
+    setMode,
+    jukeboxNavigate,
+    setPlaybackPaused,
     updateGameState,
     leaveRoom,
   }

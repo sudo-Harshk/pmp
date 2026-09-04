@@ -3,6 +3,9 @@ import {
   createInitialSnippetState,
   getNextTrackIndex,
   getPreviousTrackIndex,
+  INTERMISSION_DURATION_SECONDS,
+  JUKEBOX_MAX_SECONDS,
+  navigateJukebox,
   snippetReducer,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
@@ -97,5 +100,93 @@ describe('track boundary navigation', () => {
 
   it('handles an empty playlist', () => {
     expect(getNextTrackIndex(0, 0)).toBe(0)
+  })
+})
+
+describe('intermission and jukebox constants', () => {
+  it('exposes a 7-second intermission duration', () => {
+    expect(INTERMISSION_DURATION_SECONDS).toBe(7)
+  })
+
+  it('exposes a 180-second jukebox max duration', () => {
+    expect(JUKEBOX_MAX_SECONDS).toBe(180)
+  })
+})
+
+describe('navigateJukebox — casual mode navigation', () => {
+  it('NEXT advances by one when not on the last track', () => {
+    expect(navigateJukebox(0, 3, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 1,
+      finished: false,
+    })
+    expect(navigateJukebox(1, 3, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 2,
+      finished: false,
+    })
+  })
+
+  it('NEXT on the last track signals finished', () => {
+    expect(navigateJukebox(2, 3, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 2,
+      finished: true,
+    })
+  })
+
+  it('PREV steps back by one and never signals finished', () => {
+    expect(navigateJukebox(2, 3, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 1,
+      finished: false,
+    })
+    expect(navigateJukebox(1, 3, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
+  })
+
+  it('PREV clamps at the first track', () => {
+    expect(navigateJukebox(0, 3, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
+  })
+
+  it('NEXT on a single-track playlist signals finished', () => {
+    expect(navigateJukebox(0, 1, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 0,
+      finished: true,
+    })
+  })
+
+  it('PREV on a single-track playlist stays at zero', () => {
+    expect(navigateJukebox(0, 1, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
+  })
+
+  it('handles an empty playlist as finished regardless of nav', () => {
+    expect(navigateJukebox(0, 0, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 0,
+      finished: true,
+    })
+    expect(navigateJukebox(0, 0, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 0,
+      finished: true,
+    })
+  })
+
+  it('resets to the first track when currentIndex is out of bounds', () => {
+    expect(navigateJukebox(-1, 3, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
+    expect(navigateJukebox(5, 3, { type: 'NEXT' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
+    expect(navigateJukebox(5, 3, { type: 'PREV' })).toEqual({
+      currentTrackIndex: 0,
+      finished: false,
+    })
   })
 })

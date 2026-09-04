@@ -1,4 +1,6 @@
 export const SNIPPET_DURATION_SECONDS = 30
+export const INTERMISSION_DURATION_SECONDS = 7
+export const JUKEBOX_MAX_SECONDS = 180
 
 export interface SnippetState {
   secondsRemaining: number
@@ -50,4 +52,29 @@ export function getNextTrackIndex(currentIndex: number, trackCount: number): num
   if (trackCount <= 0) return 0
   if (currentIndex >= trackCount - 1) return trackCount - 1
   return currentIndex + 1
+}
+
+export type JukeboxNav = { type: 'PREV' } | { type: 'NEXT' }
+
+export interface JukeboxNavigationResult {
+  currentTrackIndex: number
+  finished: boolean
+}
+
+export function navigateJukebox(
+  currentIndex: number,
+  trackCount: number,
+  nav: JukeboxNav,
+): JukeboxNavigationResult {
+  if (trackCount <= 0) return { currentTrackIndex: 0, finished: true }
+  if (currentIndex < 0 || currentIndex >= trackCount) {
+    return { currentTrackIndex: 0, finished: false }
+  }
+  if (nav.type === 'PREV') {
+    return { currentTrackIndex: Math.max(0, currentIndex - 1), finished: false }
+  }
+  if (currentIndex >= trackCount - 1) {
+    return { currentTrackIndex: currentIndex, finished: true }
+  }
+  return { currentTrackIndex: currentIndex + 1, finished: false }
 }

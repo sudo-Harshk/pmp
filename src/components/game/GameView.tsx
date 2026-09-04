@@ -28,9 +28,18 @@ export default function GameView({
   const guessCount = Object.keys(room.guesses).length
   const timeUp = room.timerSeconds <= 0
   const [hideVideo, setHideVideo] = useState(false)
+  const [voteLocked, setVoteLocked] = useState(false)
 
   const timerRef = useRef(room.timerSeconds)
   timerRef.current = room.timerSeconds
+
+  const hasVoted = Boolean(myGuess) || voteLocked
+
+  function handleGuess(name: string) {
+    if (hasVoted) return
+    setVoteLocked(true)
+    onSubmitGuess(name)
+  }
 
   useEffect(() => {
     if (!isHost || room.status !== 'PLAYING') return
@@ -43,6 +52,10 @@ export default function GameView({
     }, 1000)
     return () => window.clearInterval(id)
   }, [isHost, room.status, timeUp, onHostReveal, onUpdateGameState])
+
+  useEffect(() => {
+    setVoteLocked(false)
+  }, [room.currentTrackIndex, room.status])
 
   if (!track) {
     return <p className="text-slate-400">No track available.</p>
@@ -119,11 +132,11 @@ export default function GameView({
 
         <div className="mt-6">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {myGuess ? 'Your guess is locked in' : 'Who submitted this song?'}
+            {hasVoted ? 'Vote Locked ✅' : 'Who submitted this song?'}
           </h3>
-          {myGuess ? (
+          {hasVoted ? (
             <p className="rounded-lg bg-indigo-500/10 px-3 py-2 text-center font-semibold text-indigo-300">
-              You guessed {myGuess}. Waiting for the reveal…
+              Vote Locked ✅ You guessed {myGuess}. Waiting for the reveal…
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -134,8 +147,8 @@ export default function GameView({
                   <button
                     key={name}
                     type="button"
-                    disabled={isSelf || isTaken}
-                    onClick={() => onSubmitGuess(name)}
+                    disabled={isSelf || isTaken || hasVoted}
+                    onClick={() => handleGuess(name)}
                     className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {name}

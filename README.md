@@ -7,9 +7,12 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 ## Highlights
 
 - **Real-time multiplayer** — rooms, live submissions, voting, and a host-managed game loop synced over Firebase Realtime Database.
+- **Two play modes** — host picks in the lobby: **Guessing Game** (30 s snippet + voting + reveal + 7 s intermission) or **Casual Jukebox** (full playback up to 3 min, open submitter, `Prev/Next/Pause` media controls).
 - **Smart deduplication** — duplicate songs merge into one track listing every submitter.
 - **Embedded player** — `react-youtube` with error handling for restricted/removed videos.
 - **Audio-Only Mode** — hide the video (equalizer/vinyl overlay) for extra challenge.
+- **Vote lock-in** — first guess disables all vote buttons immediately with a `Vote Locked ✅` indicator.
+- **Intermission breathing space** — 7 s synchronized countdown banner between reveal and the next track.
 - **Session persistence** — reload or rejoin a room without losing identity or host status.
 - **Auto-scoring** — +10 for correct guesses, +5 per wrong guess split among submitters.
 - **Victory confetti** — celebratory cannon on the final leaderboard.
@@ -28,12 +31,13 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 
 ## Project Status
 
-Phases 1–4 are complete and committed:
+Phases 1–4 are complete; refinements add intermission, vote lock-in, and casual jukebox mode:
 
 - **Phase 1** — Core types, YouTube parsing & deduplication helpers + tests
-- **Phase 2** — Embedded player, 30s snippet timer, error handling
+- **Phase 2** — Embedded player, 30 s snippet timer, error handling
 - **Phase 3** — Firebase sync, real-time game loop, voting & scoring
 - **Phase 4** — Session persistence, confetti, audio-only mode, Vercel config
+- **Refinements** — 7 s intermission stage, single-vote lock-in, jukebox mode toggle (no scoring change)
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 
@@ -79,7 +83,7 @@ npm test
 
 - **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19 cases)
 - **Scoring** — `src/lib/scoring.test.ts` (10 cases)
-- **Player logic / timer** — `src/lib/playerLogic.test.ts` (12 cases)
+- **Player logic / timer + intermission/jukebox** — `src/lib/playerLogic.test.ts` (22 cases)
 - **Session storage** — `src/lib/storage.test.ts` (9 cases)
 
 ## Hosting

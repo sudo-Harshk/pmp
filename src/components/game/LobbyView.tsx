@@ -1,10 +1,11 @@
-import type { RoomState } from '@/types/game'
+import type { GameMode, RoomState } from '@/types/game'
 
 interface LobbyViewProps {
   room: RoomState
   myPlayerId: string | null
   isHost: boolean
   onStartSubmission: () => void
+  onSetMode: (mode: GameMode) => void
   onLeave: () => void
 }
 
@@ -13,6 +14,7 @@ export default function LobbyView({
   myPlayerId,
   isHost,
   onStartSubmission,
+  onSetMode,
   onLeave,
 }: LobbyViewProps) {
   const players = Object.values(room.players)
@@ -59,14 +61,46 @@ export default function LobbyView({
       </div>
 
       {isHost ? (
-        <button
-          type="button"
-          onClick={onStartSubmission}
-          disabled={players.length < 2}
-          className="mt-6 w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          Start Submission
-        </button>
+        <>
+          <div className="mt-6">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Mode
+            </h3>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-800 p-1">
+              <button
+                type="button"
+                onClick={() => onSetMode('GUESSING')}
+                className={`rounded-md py-2 text-sm font-medium transition ${
+                  room.mode === 'GUESSING'
+                    ? 'bg-indigo-500 text-white shadow'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Guessing Game
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetMode('JUKEBOX')}
+                className={`rounded-md py-2 text-sm font-medium transition ${
+                  room.mode === 'JUKEBOX'
+                    ? 'bg-indigo-500 text-white shadow'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Casual Jukebox
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onStartSubmission}
+            disabled={players.length < 2}
+            className="mt-4 w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          >
+            Start Submission
+          </button>
+        </>
       ) : (
         <p className="mt-6 rounded-lg bg-slate-800/70 px-3 py-3 text-center text-sm text-slate-300">
           Waiting for the host to start the game…

@@ -35,12 +35,14 @@ The app (see `useRoom` in `src/hooks/useRoom.ts`) writes to these paths:
 
 ```
 rooms/{roomCode}
-├── status: string            # LOBBY | SUBMISSION | PLAYING | REVEAL | GAMEOVER
-├── players: { playerId: { id, name, score, hasSubmitted, bestRound } }
+├── status: string            # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
+├── mode: string              # GUESSING | JUKEBOX (default GUESSING; picked in LOBBY via setMode)
 ├── hostId: string
 ├── createdAt: number
 ├── currentTrackIndex: number
-├── timerSeconds: number
+├── timerSeconds: number      # guessing 30→0, intermission 7→0, jukebox 180 max
+├── playbackPaused: boolean   # jukebox pause (host via setPlaybackPaused, all clients follow)
+├── players: { playerId: { id, name, score, hasSubmitted, bestRound } }
 ├── guesses: { playerId: guessedName }
 ├── scoreDeltas: [ { playerId, playerName, delta, reason } ]
 ├── tracks: [ { videoId, submittedBy[], played } ]
@@ -48,7 +50,7 @@ rooms/{roomCode}
 ```
 
 - **Reads:** `rooms/{code}` (the `onValue` listener).
-- **Writes:** `rooms/{code}` (create room, transactions, status updates), `rooms/{code}/players` (join), `rooms/{code}/guesses` (cast guess), `rooms/{code}/players/{playerId}` (leave).
+- **Writes:** `rooms/{code}` (create room, transactions, status/mode updates), `rooms/{code}/players` (join), `rooms/{code}/guesses` (cast guess), `rooms/{code}/players/{playerId}` (leave). Jukebox uses `jukeboxNavigate` (transaction) and `setPlaybackPaused`/`setMode` (`update`); intermission auto-ticks `timerSeconds` (host interval) then `hostNext`.
 
 > Because the game currently uses **anonymous clients** (no Firebase Auth), the rules grant open read/write to keep multiplayer working. The `.validate` rule is the only structural guard. For higher security, add Firebase Auth and restrict writes to the creator (see "Hardening" below).
 

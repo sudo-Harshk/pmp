@@ -5,9 +5,11 @@ import EntryView from '@/components/game/EntryView'
 import LobbyView from '@/components/game/LobbyView'
 import SubmissionView from '@/components/game/SubmissionView'
 import GameView from '@/components/game/GameView'
+import JukeboxView from '@/components/game/JukeboxView'
+import IntermissionView from '@/components/game/IntermissionView'
 import RevealView from '@/components/game/RevealView'
 import LeaderboardView from '@/components/game/LeaderboardView'
-import type { RoomState } from '@/types/game'
+import type { GameMode, RoomState } from '@/types/game'
 
 export default function App() {
   const [roomCode, setRoomCode] = useState<string | null>(() => getSession()?.roomCode ?? null)
@@ -23,6 +25,9 @@ export default function App() {
     startSubmission,
     hostReveal,
     hostNext,
+    setMode,
+    jukeboxNavigate,
+    setPlaybackPaused,
     updateGameState,
     leaveRoom,
   } = useRoom(roomCode ?? undefined, {
@@ -112,6 +117,13 @@ export default function App() {
             }
             onHostReveal={() => roomCode && hostReveal(roomCode)}
             onNext={() => roomCode && hostNext(roomCode)}
+            onSetMode={(mode: GameMode) => roomCode && setMode(roomCode, mode)}
+            onJukeboxNavigate={(nav: { type: 'PREV' } | { type: 'NEXT' }) =>
+              roomCode && jukeboxNavigate(roomCode, nav)
+            }
+            onSetPlaybackPaused={(paused: boolean) =>
+              roomCode && setPlaybackPaused(roomCode, paused)
+            }
             onLeave={handleLeave}
           />
         )}
@@ -130,6 +142,9 @@ interface ContentProps {
   onUpdateGameState: (updates: Partial<RoomState>) => void
   onHostReveal: () => void
   onNext: () => void
+  onSetMode: (mode: GameMode) => void
+  onJukeboxNavigate: (nav: { type: 'PREV' } | { type: 'NEXT' }) => void
+  onSetPlaybackPaused: (paused: boolean) => void
   onLeave: () => void
 }
 
@@ -143,6 +158,9 @@ function Content({
   onUpdateGameState,
   onHostReveal,
   onNext,
+  onSetMode,
+  onJukeboxNavigate,
+  onSetPlaybackPaused,
   onLeave,
 }: ContentProps) {
   switch (room.status) {
@@ -153,6 +171,7 @@ function Content({
           myPlayerId={myPlayerId}
           isHost={isHost}
           onStartSubmission={onStartSubmission}
+          onSetMode={onSetMode}
           onLeave={onLeave}
         />
       )
@@ -161,6 +180,16 @@ function Content({
         <SubmissionView room={room} myPlayerId={myPlayerId} onSubmitSongs={onSubmitSongs} />
       )
     case 'PLAYING':
+      if (room.mode === 'JUKEBOX') {
+        return (
+          <JukeboxView
+            room={room}
+            isHost={isHost}
+            onNavigate={onJukeboxNavigate}
+            onSetPaused={onSetPlaybackPaused}
+          />
+        )
+      }
       return (
         <GameView
           room={room}
@@ -173,6 +202,8 @@ function Content({
       )
     case 'REVEAL':
       return <RevealView room={room} isHost={isHost} onNext={onNext} />
+    case 'INTERMISSION':
+      return <IntermissionView room={room} />
     case 'GAMEOVER':
       return <LeaderboardView room={room} onLeave={onLeave} />
     default:

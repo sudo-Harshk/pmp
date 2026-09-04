@@ -17,9 +17,17 @@ export interface Player {
   bestRound?: number
 }
 
-export type RoomStatus = 'LOBBY' | 'SUBMISSION' | 'PLAYING' | 'REVEAL' | 'GAMEOVER'
+export type RoomStatus =
+  | 'LOBBY'
+  | 'SUBMISSION'
+  | 'PLAYING'
+  | 'REVEAL'
+  | 'INTERMISSION'
+  | 'GAMEOVER'
 
 export type RoomRole = 'host' | 'client'
+
+export type GameMode = 'GUESSING' | 'JUKEBOX'
 
 export interface Guess {
   playerId: string
@@ -38,11 +46,13 @@ export interface RoomState {
   roomCode: string
   status: RoomStatus
   hostId: string
+  mode: GameMode
   players: Record<string, Player>
   tracks: PlaylistTrack[]
   currentTrackIndex: number
   timerSeconds: number
   guesses: Record<string, string>
   scoreDeltas?: ScoreDelta[]
+  playbackPaused?: boolean
   createdAt?: number
 }

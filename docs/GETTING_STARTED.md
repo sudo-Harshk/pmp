@@ -65,8 +65,9 @@ Open the printed URL (default `http://localhost:5173`). To test real-time multip
 ## Playing a Round
 
 1. **Create Room** (host) or **Join Room** (clients) with a name.
-2. Host presses **Start Submission**; everyone submits N YouTube links.
-3. Once everyone is ready, the host advances to **PLAYING**.
-4. A 30-second snippet plays; players vote on who submitted it (self-voting disabled, votes lock once cast).
-5. **Reveal** shows the correct submitter(s) and awards points.
-6. After the last track, **GAMEOVER** shows the leaderboard with confetti.
+2. In the lobby, the host picks the play mode: **Guessing Game** (default) or **Casual Jukebox** (toggle `Mode: Guessing Game | Casual Jukebox`).
+3. Host presses **Start Submission**; everyone submits N YouTube links.
+4. Once everyone is ready, the host advances to **PLAYING**.
+5. **Guessing Game:** A 30-second snippet plays; players vote on who submitted it (self-voting disabled, `Vote Locked ✅` — all vote buttons disable immediately and cannot be changed/cleared). After **Reveal** (correct submitter + points), a 7-second **Intermission** banner (`Next track starting in X seconds...`) runs and auto-advances to the next track.
+6. **Casual Jukebox:** The current track plays in full (up to 3 min) with the submitter shown openly; voting and reveal are hidden. The host drives `Prev / Next / Pause` (synced `playbackPaused`) and `Next` on the last track finishes the run.
+7. After the last track, **GAMEOVER** shows the leaderboard with confetti.
