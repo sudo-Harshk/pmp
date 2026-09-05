@@ -16,6 +16,7 @@ import {
   INTERMISSION_DURATION_SECONDS,
   JUKEBOX_MAX_SECONDS,
   navigateJukebox,
+  shuffleFisherYates,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
 import { clearSession, getSession } from '@/lib/storage'
@@ -345,10 +346,11 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       const status = data.status as RoomState['status']
 
       if (status === 'SUBMISSION' || (status === 'PLAYING' && (data.mode as GameMode) === 'JUKEBOX' && tracks.length === 0)) {
-        // Begin playback at the first track once submissions are in.
+        // Begin playback at the first track once submissions are in — shuffle once for engagement.
         const mode = (data.mode as GameMode) ?? 'GUESSING'
+        const shuffled = shuffleFisherYates(tracks)
         const tracksWithPlayed =
-          tracks.length > 0 ? tracks.map((t, i) => (i === 0 ? { ...t, played: true } : t)) : tracks
+          shuffled.length > 0 ? shuffled.map((t, i) => (i === 0 ? { ...t, played: true } : t)) : shuffled
         return {
           ...data,
           status: 'PLAYING',

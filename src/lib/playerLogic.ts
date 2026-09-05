@@ -78,3 +78,31 @@ export function navigateJukebox(
   }
   return { currentTrackIndex: currentIndex + 1, finished: false }
 }
+
+function randomInt(maxInclusive: number): number {
+  if (maxInclusive <= 0) return 0
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto && typeof crypto.getRandomValues === 'function') {
+    const range = maxInclusive + 1
+    const maxUint32 = 0xffffffff
+    const limit = Math.floor((maxUint32 + 1) / range) * range
+    const buf = new Uint32Array(1)
+    let r: number
+    do {
+      crypto.getRandomValues(buf)
+      r = buf[0]
+    } while (r >= limit)
+    return r % range
+  }
+  return Math.floor(Math.random() * (maxInclusive + 1))
+}
+
+export function shuffleFisherYates<T>(array: T[]): T[] {
+  const result = [...array]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = randomInt(i)
+    const tmp = result[i]
+    result[i] = result[j]
+    result[j] = tmp
+  }
+  return result
+}

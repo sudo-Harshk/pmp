@@ -6,6 +6,7 @@ import {
   INTERMISSION_DURATION_SECONDS,
   JUKEBOX_MAX_SECONDS,
   navigateJukebox,
+  shuffleFisherYates,
   snippetReducer,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
@@ -188,5 +189,39 @@ describe('navigateJukebox — casual mode navigation', () => {
       currentTrackIndex: 0,
       finished: false,
     })
+  })
+})
+
+describe('shuffleFisherYates — open-source unbiased shuffle', () => {
+  it('preserves all elements', () => {
+    const input = [1, 2, 3, 4, 5]
+    const shuffled = shuffleFisherYates(input)
+    expect(shuffled).toHaveLength(input.length)
+    expect([...shuffled].sort((a, b) => a - b)).toEqual([...input].sort((a, b) => a - b))
+  })
+
+  it('does not mutate the input array', () => {
+    const input = ['a', 'b', 'c']
+    const copy = [...input]
+    shuffleFisherYates(input)
+    expect(input).toEqual(copy)
+  })
+
+  it('handles empty and single-element arrays', () => {
+    expect(shuffleFisherYates([])).toEqual([])
+    expect(shuffleFisherYates(['x'])).toEqual(['x'])
+  })
+
+  it('changes order for arrays larger than one element over multiple runs', () => {
+    const input = [1, 2, 3, 4, 5, 6, 7, 8]
+    let seenDifferent = false
+    for (let i = 0; i < 10; i++) {
+      const shuffled = shuffleFisherYates(input)
+      if (shuffled.join(',') !== input.join(',')) {
+        seenDifferent = true
+        break
+      }
+    }
+    expect(seenDifferent).toBe(true)
   })
 })
