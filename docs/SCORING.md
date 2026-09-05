@@ -26,13 +26,15 @@ Every player who guessed a name that appears in the track's `submittedBy` list e
 const delta = correctNames.has(guessedName) ? 10 : 0
 ```
 
-### 2. Submitter Bonus (+5 per incorrect guess, split equally)
+### 2. Submitter Bonus (+5 per incorrect guess, split equally among live submitters)
 
-For **each guesser who guessed incorrectly**, the submitters collectively earn **+5**. That bonus pool is split **equally** among all submitters in `track.submittedBy`.
+For **each guesser who guessed incorrectly** (excluding departed players and submitters themselves — submitter self-guesses are ignored to prevent devtools farm), the **live** submitters collectively earn **+5**. That bonus pool is split **equally** among `resolvedSubmitterIds` (names in `submittedBy` that still map to a live `playerId`).
 
-- If the bonus pool doesn't divide evenly, the remainder is distributed one point at a time to the first submitters.
-  - Example: 2 submitters, 1 incorrect guess → pool = 5 → `3 + 2`.
-  - Example: 1 submitter, 3 incorrect guesses → pool = 15 → the submitter gets all 15.
+- No leakage: pool is divided by `resolved.length`, not original `submittedBy.length`; if `["Alice","Ghost"]` with Ghost gone, Alice gets the full `5` (previously `3` leaked `2`).
+- Remainder bias still goes to first live submitters in `submittedBy` order (shuffled global order, but `submittedBy` inner order is insertion).
+  - Example: 2 live submitters, 1 incorrect guess → pool = 5 → `3 + 2`.
+  - Example: 1 live submitter, 3 incorrect guesses → pool = 15 → the submitter gets all 15.
+  - Example: 0 live submitters → pool discarded, no phantom points.
 
 ### Example
 
@@ -55,6 +57,8 @@ Incorrect guessers: 1 → bonus pool = 5, split `3 / 2` between Alice and Bob.
 ## Notes
 
 - `guesses` is keyed by **player ID**; the `submittedBy` values are **names**. The `players` record is used to map each submitter name back to a player ID so bonuses land on the right player.
-- Submitters who do **not** resolve to a player ID are skipped (they contribute to the pool but receive no bonus).
-- A player who is both a correct guesser **and** a submitter can accrue both points.
-- `bestRound` (per player) is updated at reveal time as the maximum single-round delta, powering the leaderboard's "Best Round" stat.
+- Guesses from departed players or from a submitter of the current track are **ignored** (no `+10`, not counted toward `incorrect` pool) — owners hear but sit out voting (`GameView` shows *“This is your song — sit out”*), so they cannot farm own bonus via devtools.
+- Submitters who do **not** resolve to a live player ID are skipped and do **not** dilute the split (no leakage).
+- Double `hostReveal` is blocked inside the transaction (`status !== PLAYING` → no-op), so a round cannot be scored twice.
+- `RevealView` now renders sit-out submitters (`sat out — your track ★ +5`) not just guessers, so bonuses are visible; `GameView` counter is `eligible = players - submittedBy` and `guessCount` excludes departed/self.
+- `bestRound` (per player) is updated at reveal time as `max(prev, delta)`, powering the leaderboard tiebreak `score → bestRound → name` (`LeaderboardView` sort).

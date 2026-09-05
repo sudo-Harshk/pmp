@@ -37,20 +37,21 @@ The app (see `useRoom` in `src/hooks/useRoom.ts`) writes to these paths:
 rooms/{roomCode}
 ├── status: string            # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
 ├── mode: string              # GUESSING | JUKEBOX (default GUESSING; picked in LOBBY via setMode)
-├── hostId: string
+├── hostId: string            # auto-failover to first remaining if host leaves
 ├── createdAt: number
 ├── currentTrackIndex: number
-├── timerSeconds: number      # guessing 30→0, intermission 7→0, jukebox 180 max
-├── playbackPaused: boolean   # jukebox pause (host via setPlaybackPaused, all clients follow)
+├── timerSeconds: number      # guessing 30→0, intermission 7→0, jukebox 180 max (derived from roundStartTime delta)
+├── roundStartTime: number    # epoch ms (corrected with .info/serverTimeOffset), written on every PLAYING/INTERMISSION entry for absolute sync
+├── playbackPaused: boolean   # jukebox pause (anyone can toggle via setPlaybackPaused, all seekTo same second)
 ├── players: { playerId: { id, name, score, hasSubmitted, bestRound } }
 ├── guesses: { playerId: guessedName }
-├── scoreDeltas: [ { playerId, playerName, delta, reason } ]
-├── tracks: [ { videoId, submittedBy[], played } ]
+├── scoreDeltas: [ { playerId, playerName, delta, reason } ]  # includes sit-out submitter bonuses
+├── tracks: [ { videoId, submittedBy[], played } ]  # shuffled once at start via shuffleFisherYates
 └── submissions: { playerId: [ urls ] }
 ```
 
-- **Reads:** `rooms/{code}` (the `onValue` listener).
-- **Writes:** `rooms/{code}` (create room, transactions, status/mode updates), `rooms/{code}/players` (join), `rooms/{code}/guesses` (cast guess), `rooms/{code}/players/{playerId}` (leave). Jukebox uses `jukeboxNavigate` (transaction) and `setPlaybackPaused`/`setMode` (`update`); intermission auto-ticks `timerSeconds` (host interval) then `hostNext`.
+- **Reads:** `rooms/{code}` (the `onValue` listener) plus `.info/serverTimeOffset` for clock correction.
+- **Writes:** `rooms/{code}` (create room, transactions, status/mode/`roundStartTime` updates), `rooms/{code}/players` (join), `rooms/{code}/guesses` (cast guess), `rooms/{code}/players/{playerId}` (leave). Host-only: `hostReveal` (with `status===PLAYING` + `hostId` guard), `hostNext` (shuffles once at start). Anyone in Jukebox: `jukeboxNavigate`/`jukeboxJump`/`jukeboxSeek`/`setPlaybackPaused` (transactions/`update` with `roundStartTime` delta + `seekTo` drift fix); intermission auto-ticks `timerSeconds` via absolute `roundStartTime` delta then `hostNext`.
 
 > Because the game currently uses **anonymous clients** (no Firebase Auth), the rules grant open read/write to keep multiplayer working. The `.validate` rule is the only structural guard. For higher security, add Firebase Auth and restrict writes to the creator (see "Hardening" below).
 

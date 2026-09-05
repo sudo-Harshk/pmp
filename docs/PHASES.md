@@ -64,12 +64,26 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 - **Casual jukebox mode** — Host toggle in `src/components/game/LobbyView.tsx` (`Mode: Guessing Game | Casual Jukebox`) calls `setMode()`. `src/components/game/JukeboxView.tsx` plays the current track in full (or 180 s max), shows submitter(s) openly, and exposes host-synced `Prev / Next / Pause` via `jukeboxNavigate()` (transaction, `finished` on last `NEXT`) and `setPlaybackPaused()`; guessing `REVEAL`/`INTERMISSION` and voting are skipped. `src/App.tsx` branches `case 'PLAYING'` on `room.mode` to `JukeboxView` vs `GameView`, and `useRoom.fromFirestoreRoom()` defaults legacy rooms to `GUESSING`.
 - **Tests:** `src/lib/playerLogic.test.ts` adds 10 cases — 2 for duration constants + 8 for `navigateJukebox()` (NEXT advance, NEXT on last → finished, PREV step-back/clamp, single-track, empty, out-of-bounds).
 
+## Hardening, Bugs & Jukebox Jam — Shuffle, Vote, Scoring & Watch-Party Sync
+
+**Goal:** Fix commercial edge-cases found in 4-player QA and make Jukebox a true Spotify-like common queue.
+
+- **Bugs found in QA (4 players):** straight (unshuffled) order, vote steal (`isTaken` globally disabled a name after one vote), invisible submitter bonus / lost points when submitter left, double-reveal on rapid click, `5/3` guess counter, host controls disappearing on reload.
+- **Shuffle** — `src/lib/playerLogic.ts:81` new `shuffleFisherYates<T>` (open-source Fisher–Yates, `crypto.getRandomValues` → `Math.random` fallback, unbiased, non-mutating). Wired **once** at `SUBMISSION→PLAYING` in `src/hooks/useRoom.ts:348` after dedupe so order is never straight. Tests: `playerLogic.test.ts` +4 cases (preserves elements, immutability, empty/single, statistical order change). No new dep.
+- **Vote independence + sit-out-but-listen** — `src/components/game/GameView.tsx:32` now derives `isSubmitter = track.submittedBy.includes(myName)`; if true, all hear the same synced video but the owner sees *“This is your song — you all listen together, but you sit out voting. You earn bonus if others miss”* and no vote buttons. Removed global `isTaken` (`Object.values(guesses).includes`) so 4 players can all vote `Alice` independently; `hasVoted`/`isSelf` only local. `hostReveal` now guards `status===PLAYING` + `hostId` to block double scoring.
+- **Scoring genuine** — `src/lib/scoring.ts:39` pool now splits only among **live** `resolvedSubmitterIds` (no leakage when `Ghost` left), submitter self-guesses ignored (no devtools farm), `incorrectGuessCount` excludes departed/self, `hostReveal` double-guard, `src/components/game/RevealView.tsx:42` now shows sit-out submitters (`sat out — your track ★ +5`) not just guessers, `src/components/game/GameView.tsx:26` counter fixed to `eligible = players.filter(!submittedBy)`.
+- **Watch-party sync** — Added `roundStartTime?: number` to `RoomState` (`src/types/game.ts:45`), `serverOffset` via `.info/serverTimeOffset` (`src/hooks/useRoom.ts:133`), all `roundStartTime` writes now `Date.now()+serverOffset`. Expanded `YouTubePlayer.tsx:4` handle with `seekTo`/`getCurrentTime`/`getDuration`/`getPlayerState` + `onStateChange`. Host ticker now absolute `Math.max(0, duration - floor((correctedNow - roundStartTime)/1000))` every 500 ms (survives background throttling). `GameView`/`JukeboxView` seek on `onReady` and drift-correct every 2 s (`>1.5 s` → `seekTo`).
+- **YouTube robustness** — `src/lib/youtube.ts:5` patterns already strip `?t=`/`&list=` for `watch/youtu.be/shorts`; `YouTubePlayer` `onError` logs `101/150` embed block + `100` invalid as `console.warn` and exposes host/anyone **Skip Unplayable Track** (`GameView` host, `JukeboxView` anyone) via `hostNext`/`jukeboxNavigate`.
+- **Host failover** — `src/hooks/useRoom.ts:169` effect promotes `Object.keys(players)[0]` if `hostId` not in `players`; `SubmissionView.tsx:152` and `LobbyView.tsx:63` `isHost` now reliably rehydrates via session `room.players[session.playerId]` check.
+- **Jukebox common queue (Spotify-like jam)** — Modified, not new: `src/components/game/JukeboxView.tsx` now shows shuffled `tracks` as a tap-to-jump queue below the player, seek bar (`range` → `jukeboxSeek`), and `Prev/Pause/Next/Skip` are **anyone-can** (host guard removed from `jukeboxNavigate`/`setPlaybackPaused` + new `jukeboxJump`/`jukeboxSeek` in `src/hooks/useRoom.ts:431` + `App.tsx` `serverOffset` plumbing). All still share one `currentTrackIndex` + `roundStartTime` so everyone hears the same second like a jam. `YouTubePlayer` `key={videoId}` remount + `onReady` seek handles late join.
+- **Tests:** `playerLogic.test.ts` now 26 cases (was 22, +4 shuffle). Total `64` (was 60).
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
 | ---------------------------- | ------------------------ | ----- | -------------------------------------------------- |
-| YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup                                |
-| Scoring                      | `scoring.test.ts`        | 10    | Guess points + submitter bonus distribution         |
-| Player logic (timer + nav)   | `playerLogic.test.ts`    | 22    | Countdown, track boundaries, intermission/jukebox  |
-| Session storage              | `storage.test.ts`        | 9     | Persistence round-trip (jsdom)                     |
-| **Total**                    |                          | **60**|                                                    |
+| YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup (watch/youtu.be/shorts + ?t/&list) |
+| Scoring                      | `scoring.test.ts`        | 10    | Guess points + submitter bonus (live split, self-farm blocked) |
+| Player logic (timer + nav + shuffle) | `playerLogic.test.ts`    | 26    | Countdown, track boundaries, intermission/jukebox, Fisher–Yates shuffle |
+| Session storage              | `storage.test.ts`        | 9     | Persistence round-trip (jsdom) + host rehydrate    |
+| **Total**                    |                          | **64**|                                                    |

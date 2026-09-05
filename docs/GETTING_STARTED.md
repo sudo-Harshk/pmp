@@ -65,9 +65,9 @@ Open the printed URL (default `http://localhost:5173`). To test real-time multip
 ## Playing a Round
 
 1. **Create Room** (host) or **Join Room** (clients) with a name.
-2. In the lobby, the host picks the play mode: **Guessing Game** (default) or **Casual Jukebox** (toggle `Mode: Guessing Game | Casual Jukebox`).
-3. Host presses **Start Submission**; everyone submits N YouTube links.
-4. Once everyone is ready, the host advances to **PLAYING**.
-5. **Guessing Game:** A 30-second snippet plays; players vote on who submitted it (self-voting disabled, `Vote Locked ✅` — all vote buttons disable immediately and cannot be changed/cleared). After **Reveal** (correct submitter + points), a 7-second **Intermission** banner (`Next track starting in X seconds...`) runs and auto-advances to the next track.
-6. **Casual Jukebox:** The current track plays in full (up to 3 min) with the submitter shown openly; voting and reveal are hidden. The host drives `Prev / Next / Pause` (synced `playbackPaused`) and `Next` on the last track finishes the run.
-7. After the last track, **GAMEOVER** shows the leaderboard with confetti.
+2. In the lobby, the host picks the play mode: **Guessing Game** (default) or **Casual Jukebox** (toggle `Mode: Guessing Game | Casual Jukebox`). The shuffled Fisher–Yates playlist is built once at game start so order is never straight.
+3. Host presses **Start Submission**; everyone submits N YouTube links (deduped, `?t=`/`&list=` stripped).
+4. Once everyone is ready, the host sees **Start Game** (Guessing) / **Start Playback** (Jukebox); others see *Waiting for host...*.
+5. **Guessing Game:** A 30-second snippet plays **synced** (`roundStartTime` + server clock + `seekTo` drift fix, everyone hears same second). Owners of the current track **hear it with friends but sit out voting** (*“This is your song — sit out”* banner, no vote buttons) and earn submitter bonus if others miss; others vote independently (no global `isTaken` steal) and `Vote Locked ✅` locks immediately. If the video is `101/150/100` unplayable, a host **Skip Unplayable Track** appears (`console.warn`). After **Reveal** (now shows sit-out bonuses `sat out — your track ★ +5`), a 7-second **Intermission** banner (`Next track starting in X seconds...`) auto-advances. Double reveal is blocked.
+6. **Casual Jukebox — common queue like Spotify, anyone can DJ:** The shuffled tracks play one by one as a shared queue (visible list below the player, current highlighted, `played` checks). **Anyone** (not just host) can `Prev / Pause / Next / Seek` (seek bar) or tap any queue row to jump (`jukeboxJump`); all stay synced to the same second via `roundStartTime` + `seekTo` correction and late join seeks to the middle. Full track up to 3 min, submitter shown openly, voting/reveal hidden, `Skip Unplayable Track` for anyone on `101/150/100`. `Next` on last finishes the run. If host leaves, the first remaining player is auto-promoted.
+7. After the last track, **GAMEOVER** shows the leaderboard with tiebreak `score → bestRound → name` and confetti.

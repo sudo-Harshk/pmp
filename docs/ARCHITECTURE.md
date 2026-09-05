@@ -28,16 +28,23 @@ sequenceDiagram
     F-->>H: onValue(rooms/{code}) → new status
     F-->>C: onValue(rooms/{code}) → new status
     C->>F: submitSongs() [transaction]
-    H->>F: hostReveal() [transaction]
+    H->>F: hostNext() SUBMISSION→PLAYING [transaction + shuffleFisherYates]
+    Note over H,F: roundStartTime = correctedNow + offset, shuffled tracks
+    F-->>H: onValue timerSeconds + roundStartTime
+    F-->>C: onValue timerSeconds + roundStartTime
+    C->>F: onReady seekTo((now - roundStartTime)/1000) drift fix
+    H->>F: hostReveal() [transaction, status guard]
     F-->>H: onValue → scores / scoreDeltas
     F-->>C: onValue → scores / scoreDeltas
-    H->>F: hostNext() → INTERMISSION [transaction]
-    Note over H,F: INTERMISSION 7s countdown (host ticker)
+    H->>F: hostNext() → INTERMISSION [transaction + roundStartTime]
+    Note over H,F: INTERMISSION 7s countdown (host ticker via roundStartTime delta)
     F-->>H: onValue timerSeconds--
     F-->>C: onValue timerSeconds--
     H->>F: auto hostNext() → PLAYING
-    H->>F: jukeboxNavigate(PREV|NEXT) / setPlaybackPaused()
+    H->>F: jukeboxJump(index) / jukeboxNavigate(PREV|NEXT) / setPlaybackPaused() / jukeboxSeek(seconds) (anyone in JUKEBOX)
+    Note over C,F: Jukebox: anyone can Prev/Pause/Next/Seek/tap queue, all seekTo same second
     C->>F: leaveRoom() → remove players/{id}
+    Note over H,F: host failover: if hostId not in players, first remaining promoted
 ```
 
 Every client opens the URL, creates or joins a room, and then subscribes to a single Firebase node (`rooms/{roomCode}`) via the `onValue` listener. State changes (submissions, guesses, timer, status) are written by the acting client and **pushed to every other client live** — no polling, no server code.
@@ -57,25 +64,25 @@ graph TD
 
     SRC --> LIB[lib/]
     LIB --> FB[firebase.ts<br/>app + db init]
-    LIB --> YT[youtube.ts<br/>extractVideoId / processSubmissions]
-    LIB --> SC[scoring.ts<br/>calculateRoundScores]
-    LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox]
+    LIB --> YT[youtube.ts<br/>extractVideoId / processSubmissions<br/>handles watch/youtu.be/shorts + ?t &list stripping]
+    LIB --> SC[scoring.ts<br/>calculateRoundScores<br/>live-submitter split, self-farm blocked]
+    LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
     LIB --> ST[storage.ts<br/>localStorage session helpers]
 
     SRC --> HOOKS[hooks/]
-    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>setMode / jukeboxNavigate / intermission ticker]
+    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>hostNext (shuffle) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker]
 
     SRC --> COMP[components/]
-    COMP --> YTP[YouTubePlayer.tsx<br/>react-youtube wrapper]
+    COMP --> YTP[YouTubePlayer.tsx<br/>react-youtube wrapper<br/>seekTo/getCurrentTime/getDuration + onStateChange]
     COMP --> GAMEV[game/]
     GAMEV --> ENTRY[EntryView.tsx<br/>Create / Join]
     GAMEV --> LOBBY[LobbyView.tsx<br/>room code + roster + mode toggle]
-    GAMEV --> SUB[SubmissionView.tsx<br/>song form + readiness]
-    GAMEV --> GV[GameView.tsx<br/>player + synced 30s timer + vote lock-in + audio-only]
-    GAMEV --> JB[JukeboxView.tsx<br/>full playback + Prev/Next/Pause + open submitter]
+    GAMEV --> SUB[SubmissionView.tsx<br/>song form + readiness + Start Game/Playback]
+    GAMEV --> GV[GameView.tsx<br/>player + absolute 30s timer + vote lock-in + sit-out-but-listen + audio-only + Skip Unplayable]
+    GAMEV --> JB[JukeboxView.tsx<br/>common shuffled queue + seek sync + seek bar + queue tap<br/>anyone Prev/Pause/Next/Seek/Skip + visible queue like Spotify]
     GAMEV --> IM[IntermissionView.tsx<br/>7s countdown banner]
-    GAMEV --> REV[RevealView.tsx<br/>submitters + guesses]
-    GAMEV --> LEAD[LeaderboardView.tsx<br/>rankings + confetti]
+    GAMEV --> REV[RevealView.tsx<br/>submitters + guesses + sit-out bonus]
+    GAMEV --> LEAD[LeaderboardView.tsx<br/>rankings + tiebreak score→bestRound→name + confetti]
 ```
 
 > Note: `src/components/{DedupPreview,RoomCard,SongSubmissionForm,PlayerStage}.tsx` are earlier-phase artifacts kept for reference; the live multiplayer flow uses the components under `src/components/game/`.
@@ -99,7 +106,7 @@ stateDiagram-v2
     GAMEOVER --> [*]
 ```
 
-**Host vs. Client:** The room has exactly one `hostId`. Only the host may transition status, run the global countdown, reveal scores, advance tracks, toggle `mode` in the lobby, and drive jukebox `Prev/Next/Pause`. Clients cast guesses (which lock immediately with a `Vote Locked ✅` indicator) and submit songs. Guessing mode uses the 30 s synced timer + `REVEAL` + 7 s `INTERMISSION` breathing space; jukebox mode hides voting/reveal and shows the submitter openly. This keeps a single source of truth and avoids conflicting transitions.
+**Host vs. Client:** The room has exactly one `hostId` for Guessing transitions, but the Jukebox common queue is now **Spotify-like: anyone can control**. Only the host may transition `SUBMISSION→PLAYING` (with one-time Fisher–Yates shuffle), run the global countdown, `hostReveal`, and toggle `mode` in the lobby. In Jukebox, **any player** can drive `Prev/Next` (`jukeboxNavigate`), tap any queue row (`jukeboxJump`), `Seek` (`jukeboxSeek`), and `Pause` (`setPlaybackPaused`) — all synced via `roundStartTime` + server-clock offset. All clients cast guesses (which lock with `Vote Locked ✅`) and submit songs. Owners of the current track **hear it together** with others but sit out voting (banner *“This is your song — sit out, you earn bonus if others miss”*), preventing self-vote cheating while keeping the watch-party synced. Votes are independent per player (no global `isTaken`), `101/150/100` unplayable videos show a host/anyone **Skip Unplayable Track** that `seekTo`-corrects drift (`>1.5 s`) via the expanded `YouTubePlayer` handle.
 
 ## Firebase Realtime Database Schema
 
@@ -110,13 +117,14 @@ rooms/{roomCode}
 ├── roomCode: string        # "ABCD"
 ├── status: string          # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
 ├── mode: string            # GUESSING | JUKEBOX (default GUESSING)
-├── hostId: string          # player id of the host
+├── hostId: string          # player id of the host (auto-failover to first remaining if host leaves)
 ├── createdAt: number       # epoch ms
 ├── currentTrackIndex: number
-├── timerSeconds: number    # guessing: 30->0 per snippet; intermission: 7->0; jukebox: 180 max
-├── playbackPaused: boolean # jukebox pause state (synced, host-controlled)
+├── timerSeconds: number    # guessing: 30→0 per snippet; intermission: 7→0; jukebox: 180 max (derived from roundStartTime)
+├── roundStartTime: number  # epoch ms (corrected with .info/serverTimeOffset), written on every PLAYING/INTERMISSION entry for absolute sync
+├── playbackPaused: boolean # jukebox pause state (anyone can toggle, synced)
 ├── guesses: { playerId: guessedName }
-├── scoreDeltas: [ { playerId, playerName, delta, reason } ]  # last reveal only
+├── scoreDeltas: [ { playerId, playerName, delta, reason } ]  # last reveal only (includes sit-out submitter bonuses)
 ├── players
 │   └── { playerId }:
 │       ├── id, name, score
@@ -124,10 +132,10 @@ rooms/{roomCode}
 │       └── bestRound: number          # highest single-round delta
 ├── submissions
 │   └── { playerId }: [ normalizedWatchUrls ]
-└── tracks: [ { videoId, submittedBy[], played } ]   # deduplicated playlist
+└── tracks: [ { videoId, submittedBy[], played } ]   # deduplicated, shuffled once at start via shuffleFisherYates
 ```
 
-Concurrency-sensitive writes (`submitSongs`, `hostReveal`, `hostNext`, `jukeboxNavigate`) use Firebase **transactions** (`runTransaction`) so multiple clients don't clobber each other. Idempotent single-field writes (`submitGuess`, `startSubmission`, `setMode`, `setPlaybackPaused`) use `update`. `hostNext` is status-aware: `REVEAL` → `INTERMISSION` (7 s, next index) or `GAMEOVER`; `INTERMISSION` → `PLAYING` (auto-ticked by the host interval in `useRoom`); `SUBMISSION` → `PLAYING` (first track). `timerSeconds` is reused for both the 30 s snippet and the 7 s intermission countdown. `App.tsx` routes `INTERMISSION` → `IntermissionView` and branches `PLAYING` on `mode` → `GameView` (guessing) vs `JukeboxView` (casual).
+Concurrency-sensitive writes (`submitSongs`, `hostReveal` with `status===PLAYING` guard, `hostNext` with shuffleFisherYates, `jukeboxNavigate`/`jukeboxJump`) use Firebase **transactions** (`runTransaction`) so multiple clients don't clobber each other. Idempotent single-field writes (`submitGuess`, `startSubmission`, `setMode`, `setPlaybackPaused`, `jukeboxSeek` via `update` with `roundStartTime` delta) use `update`. `hostNext` is status-aware: `SUBMISSION→PLAYING` (shuffle + `roundStartTime`), `PLAYING` (skip unplayable → next `PLAYING` or `GAMEOVER`), `REVEAL→INTERMISSION` (7 s, `roundStartTime`) or `GAMEOVER`; `INTERMISSION→PLAYING` (auto-ticked by host `roundStartTime` delta). Jukebox `Prev/Next`/`Jump`/`Seek` are **anyone-can** transactions that set `currentTrackIndex`, `roundStartTime`, `timerSeconds`. All timers are absolute `Math.max(0, duration - floor((correctedNow - roundStartTime)/1000))` to survive background tab throttling. Host failover promotes `Object.keys(players)[0]` if `hostId` leaves. `App.tsx` routes `INTERMISSION` → `IntermissionView` and branches `PLAYING` on `mode` → `GameView` (guessing, 30 s, sit-out) vs `JukeboxView` (common queue, anyone controls, seek bar + queue tap).
 
 ## Session Persistence
 
@@ -135,7 +143,7 @@ A player's identity is stored in `localStorage` under `play_my_playlist_session`
 
 ## Testing
 
-- **Vitest** with four pure-logic suites run under jsdom — `youtube`, `scoring`, `playerLogic` (timer + `navigateJukebox` + duration constants), and `storage`.
-- Logic that touches Firebase (`useRoom`) is intentionally kept thin; the testable rules (dedupe, scoring, timer, intermission/jukebox navigation, session) live in pure modules under `src/lib/`. `playerLogic.test.ts` now covers `INTERMISSION_DURATION_SECONDS (7)`, `JUKEBOX_MAX_SECONDS (180)`, and `navigateJukebox()` (NEXT/PREV, clamping, single-track, empty, out-of-bounds).
-- `GameView` enforces single-vote lock-in locally (`voteLocked` state + `Vote Locked ✅`) so votes cannot be changed/cleared even before the Firebase write propagates.
-- Run everything with `npm test` (60 tests).
+- **Vitest** with four pure-logic suites run under jsdom — `youtube`, `scoring`, `playerLogic` (timer + `navigateJukebox` + `shuffleFisherYates` + duration constants), and `storage`.
+- Logic that touches Firebase (`useRoom`) is intentionally kept thin; the testable rules (dedupe, scoring, timer, shuffle, intermission/jukebox navigation, roundStartTime drift, sit-out, session) live in pure modules under `src/lib/`. `playerLogic.test.ts` now covers `INTERMISSION_DURATION_SECONDS (7)`, `JUKEBOX_MAX_SECONDS (180)`, `navigateJukebox()` (NEXT/PREV, clamping, single-track, empty, out-of-bounds), and `shuffleFisherYates` (preserves elements, immutability, empty/single, statistical order change).
+- `GameView` enforces single-vote lock-in locally (`voteLocked` + `isSubmitter` sit-out: owners hear but see *“This is your song — sit out”* banner, not voting buttons) so votes cannot be changed/cleared and no global `isTaken` steal; scoring guards (`!players[id] continue`, self-farm blocked, pool split only among live submitters) and `hostReveal` `status===PLAYING` guard prevent double-scoring.
+- Run everything with `npm test` (64 tests).
