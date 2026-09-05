@@ -275,9 +275,13 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
   )
 
   const hostReveal = useCallback(async (code: string): Promise<void> => {
+    if (!room || room.hostId !== myPlayerId) return
+    const callerId = myPlayerId
     await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
       if (currentVal === null) return currentVal
       const data = currentVal as Record<string, unknown>
+      if ((data.hostId as string) !== callerId) return currentVal
+      if ((data.status as RoomState['status']) !== 'PLAYING') return currentVal
       const players = (data.players as Record<string, Player>) ?? {}
       const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
       const currentIndex = (data.currentTrackIndex as number) ?? 0
@@ -329,7 +333,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
         guesses,
       }
     })
-  }, [])
+  }, [room, myPlayerId])
 
   const hostNext = useCallback(async (code: string): Promise<void> => {
     if (!room || room.hostId !== myPlayerId) return

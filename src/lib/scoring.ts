@@ -26,31 +26,41 @@ export function calculateRoundScores(
 
   for (const guesserId of Object.keys(guesses)) {
     if (!players[guesserId]) continue
+    // Sit-out submitters cannot score by guessing — ignore any guess from a submitter (prevents devtools farm)
+    const guesserName = players[guesserId]?.name
+    if (guesserName && correctNames.has(guesserName)) continue
     const guessedName = guesses[guesserId]
     const delta = correctNames.has(guessedName) ? CORRECT_GUESS_POINTS : 0
     deltas[guesserId] = (deltas[guesserId] ?? 0) + delta
     scores[guesserId] = (scores[guesserId] ?? 0) + delta
   }
 
-  const incorrectGuessCount = Object.keys(guesses).filter(
-    (guesserId) => players[guesserId] && !correctNames.has(guesses[guesserId]),
-  ).length
+  const incorrectGuessCount = Object.keys(guesses).filter((guesserId) => {
+    if (!players[guesserId]) return false
+    const guesserName = players[guesserId]?.name
+    if (guesserName && correctNames.has(guesserName)) return false
+    return !correctNames.has(guesses[guesserId])
+  }).length
 
   if (incorrectGuessCount > 0 && submitters.length > 0) {
-    const bonusPool = SUBMITTER_BONUS_PER_INCORRECT_GUESS * incorrectGuessCount
-    const base = Math.floor(bonusPool / submitters.length)
-    const rem = bonusPool % submitters.length
-
     const resolvedSubmitterIds = submitters
       .map((name) => findPlayerIdByName(players, name))
-      .filter((id): id is string => id !== null)
+      .filter((id): id is string => id !== null && !!players[id])
 
-    resolvedSubmitterIds.forEach((submitterId, index) => {
-      if (!players[submitterId]) return
-      const share = base + (index < rem ? 1 : 0)
-      deltas[submitterId] = (deltas[submitterId] ?? 0) + share
-      scores[submitterId] = (scores[submitterId] ?? 0) + share
-    })
+    if (resolvedSubmitterIds.length === 0) {
+      // No live submitters — pool is discarded to avoid phantom points
+    } else {
+      const bonusPool = SUBMITTER_BONUS_PER_INCORRECT_GUESS * incorrectGuessCount
+      const base = Math.floor(bonusPool / resolvedSubmitterIds.length)
+      const rem = bonusPool % resolvedSubmitterIds.length
+
+      resolvedSubmitterIds.forEach((submitterId, index) => {
+        if (!players[submitterId]) return
+        const share = base + (index < rem ? 1 : 0)
+        deltas[submitterId] = (deltas[submitterId] ?? 0) + share
+        scores[submitterId] = (scores[submitterId] ?? 0) + share
+      })
+    }
   }
 
   const roundedScores: Record<string, number> = {}

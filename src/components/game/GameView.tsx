@@ -23,7 +23,8 @@ export default function GameView({
   const candidates = players.map((p) => p.name)
   const myName = myPlayerId ? room.players[myPlayerId]?.name : null
   const myGuess = myPlayerId ? room.guesses[myPlayerId] : undefined
-  const guessCount = Object.keys(room.guesses).length
+  const eligibleGuessers = players.filter((p) => !track.submittedBy.includes(p.name)).length
+  const guessCount = Object.keys(room.guesses).filter((id) => room.players[id] && !track.submittedBy.includes(room.players[id].name)).length
   const timeUp = room.timerSeconds <= 0
   const [hideVideo, setHideVideo] = useState(false)
   const [voteLocked, setVoteLocked] = useState(false)
@@ -64,7 +65,7 @@ export default function GameView({
           <span className="font-bold text-white">{room.tracks.length}</span>
         </p>
         <span className="text-xs text-slate-400">
-          {guessCount}/{players.length - 1} guessed
+          {guessCount}/{eligibleGuessers} guessed
         </span>
       </div>
 

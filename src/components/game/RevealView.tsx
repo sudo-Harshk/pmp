@@ -41,36 +41,50 @@ export default function RevealView({ room, isHost, onNext }: RevealViewProps) {
         </h3>
         <ul className="space-y-2">
           {players
-            .filter((p) => room.guesses[p.id])
+            .filter((p) => room.guesses[p.id] || (deltaById.get(p.id) ?? 0) > 0)
             .map((p) => {
               const guessed = room.guesses[p.id]
-              const correct = submitterNames.has(guessed)
+              const isGuesser = Boolean(guessed)
+              const correct = isGuesser ? submitterNames.has(guessed) : false
               const delta = deltaById.get(p.id) ?? 0
+              const isSubmitter = submitterNames.has(p.name)
               return (
                 <li
                   key={p.id}
                   className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                    correct
+                    isGuesser && correct
                       ? 'border-emerald-500/40 bg-emerald-500/10'
-                      : 'border-slate-700 bg-slate-800/60'
+                      : isGuesser
+                        ? 'border-slate-700 bg-slate-800/60'
+                        : 'border-amber-500/30 bg-amber-500/10'
                   }`}
                 >
                   <span className="text-sm text-white">
-                    {p.name} guessed <span className="font-semibold">{guessed}</span>
+                    {isGuesser ? (
+                      <>
+                        {p.name} guessed <span className="font-semibold">{guessed}</span>
+                      </>
+                    ) : isSubmitter ? (
+                      <>
+                        {p.name} <span className="text-amber-300">sat out — your track</span>
+                      </>
+                    ) : (
+                      <>{p.name} did not guess</>
+                    )}
                   </span>
                   <span
                     className={`text-sm font-semibold ${
                       delta > 0 ? 'text-emerald-400' : 'text-slate-500'
                     }`}
                   >
-                    {correct ? '✓' : '✗'} {delta > 0 ? `+${delta}` : ''}
+                    {isGuesser ? (correct ? '✓' : '✗') : '★'} {delta > 0 ? `+${delta}` : ''}
                   </span>
                 </li>
               )
             })}
         </ul>
 
-        {players.filter((p) => room.guesses[p.id]).length === 0 && (
+        {players.filter((p) => room.guesses[p.id] || (deltaById.get(p.id) ?? 0) > 0).length === 0 && (
           <p className="mt-3 text-sm text-slate-500">No one cast a guess this round.</p>
         )}
       </div>
