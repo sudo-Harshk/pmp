@@ -4,6 +4,10 @@ import YouTube, { type YouTubeEvent, type YouTubeProps } from 'react-youtube'
 export interface YouTubePlayerHandle {
   playVideo: () => void
   pauseVideo: () => void
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void
+  getCurrentTime: () => number
+  getDuration: () => number
+  getPlayerState: () => number
 }
 
 export const YOUTUBE_EMBED_ERROR_CODES = new Set([101, 150])
@@ -23,6 +27,7 @@ interface YouTubePlayerProps {
   onEnded?: () => void
   onError?: (errorCode: number) => void
   onReady?: (handle: YouTubePlayerHandle) => void
+  onStateChange?: (event: YouTubeEvent<number>) => void
 }
 
 export default function YouTubePlayer({
@@ -31,6 +36,7 @@ export default function YouTubePlayer({
   onEnded,
   onError,
   onReady,
+  onStateChange,
 }: YouTubePlayerProps) {
   const targetRef = useRef<YouTubePlayerHandle | null>(null)
 
@@ -48,6 +54,10 @@ export default function YouTubePlayer({
     const handle: YouTubePlayerHandle = {
       playVideo: () => target.playVideo(),
       pauseVideo: () => target.pauseVideo(),
+      seekTo: (seconds: number, allowSeekAhead: boolean) => target.seekTo(seconds, allowSeekAhead),
+      getCurrentTime: () => target.getCurrentTime(),
+      getDuration: () => target.getDuration(),
+      getPlayerState: () => target.getPlayerState(),
     }
     targetRef.current = handle
     onReady?.(handle)
@@ -67,6 +77,7 @@ export default function YouTubePlayer({
     videoId,
     opts,
     onReady: handleReady,
+    onStateChange: onStateChange,
     onEnd: onEnded,
     onError: (event: YouTubeEvent<number>) => {
       const code = typeof event.data === 'number' ? event.data : Number(event.data)

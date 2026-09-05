@@ -18,6 +18,7 @@ export default function App() {
     room,
     myPlayerId,
     isHost,
+    serverOffset,
     createRoom,
     joinRoom,
     submitSongs,
@@ -26,6 +27,8 @@ export default function App() {
     hostNext,
     setMode,
     jukeboxNavigate,
+    jukeboxJump,
+    jukeboxSeek,
     setPlaybackPaused,
     leaveRoom,
   } = useRoom(roomCode ?? undefined, {
@@ -107,6 +110,7 @@ export default function App() {
             room={room}
             myPlayerId={myPlayerId}
             isHost={isHost}
+            serverOffset={serverOffset}
             onStartSubmission={() => roomCode && startSubmission(roomCode)}
             onSubmitSongs={handleSubmitSongs}
             onGuess={handleGuess}
@@ -115,6 +119,8 @@ export default function App() {
             onJukeboxNavigate={(nav: { type: 'PREV' } | { type: 'NEXT' }) =>
               roomCode && jukeboxNavigate(roomCode, nav)
             }
+            onJukeboxJump={(idx: number) => roomCode && jukeboxJump(roomCode, idx)}
+            onJukeboxSeek={(sec: number) => roomCode && jukeboxSeek(roomCode, sec)}
             onSetPlaybackPaused={(paused: boolean) =>
               roomCode && setPlaybackPaused(roomCode, paused)
             }
@@ -130,12 +136,15 @@ interface ContentProps {
   room: RoomState
   myPlayerId: string | null
   isHost: boolean
+  serverOffset: number
   onStartSubmission: () => void
   onSubmitSongs: (urls: string[]) => void
   onGuess: (guessedName: string) => void
   onNext: () => void
   onSetMode: (mode: GameMode) => void
   onJukeboxNavigate: (nav: { type: 'PREV' } | { type: 'NEXT' }) => void
+  onJukeboxJump: (index: number) => void
+  onJukeboxSeek: (seconds: number) => void
   onSetPlaybackPaused: (paused: boolean) => void
   onLeave: () => void
 }
@@ -144,12 +153,15 @@ function Content({
   room,
   myPlayerId,
   isHost,
+  serverOffset,
   onStartSubmission,
   onSubmitSongs,
   onGuess,
   onNext,
   onSetMode,
   onJukeboxNavigate,
+  onJukeboxJump,
+  onJukeboxSeek,
   onSetPlaybackPaused,
   onLeave,
 }: ContentProps) {
@@ -180,8 +192,10 @@ function Content({
         return (
           <JukeboxView
             room={room}
-            isHost={isHost}
+            serverOffset={serverOffset}
             onNavigate={onJukeboxNavigate}
+            onJump={onJukeboxJump}
+            onSeek={onJukeboxSeek}
             onSetPaused={onSetPlaybackPaused}
           />
         )

@@ -104,6 +104,7 @@ export interface UseRoomResult {
   room: RoomState | null
   myPlayerId: string | null
   isHost: boolean
+  serverOffset: number
   createRoom: (hostName: string) => Promise<{ roomCode: string; playerId: string }>
   joinRoom: (roomCode: string, playerName: string) => Promise<string>
   submitSongs: (roomCode: string, playerId: string, youtubeUrls: string[]) => Promise<void>
@@ -116,6 +117,8 @@ export interface UseRoomResult {
     roomCode: string,
     nav: { type: 'PREV' } | { type: 'NEXT' },
   ) => Promise<void>
+  jukeboxJump: (roomCode: string, index: number) => Promise<void>
+  jukeboxSeek: (roomCode: string, seconds: number) => Promise<void>
   setPlaybackPaused: (roomCode: string, paused: boolean) => Promise<void>
   updateGameState: (roomCode: string, updates: Partial<RoomState>) => Promise<void>
   leaveRoom: (roomCode: string, playerId: string) => Promise<void>
@@ -132,9 +135,16 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
   const [room, setRoom] = useState<RoomState | null>(null)
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null)
+  const [serverOffset, setServerOffset] = useState(0)
   const roomRef = useRef(room)
 
   roomRef.current = room
+
+  useEffect(() => {
+    const offsetRef = ref(db, '.info/serverTimeOffset')
+    const unsub = onValue(offsetRef, (snap) => setServerOffset(snap.val() ?? 0))
+    return () => unsub()
+  }, [])
 
   useEffect(() => {
     if (!roomCode) {
@@ -360,7 +370,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           status: 'PLAYING',
           currentTrackIndex: 0,
           timerSeconds: mode === 'JUKEBOX' ? JUKEBOX_MAX_SECONDS : SNIPPET_DURATION_SECONDS,
-          roundStartTime: Date.now(),
+          roundStartTime: Date.now() + serverOffset,
           tracks: tracksWithPlayed,
           guesses: {},
           scoreDeltas: null,
@@ -378,7 +388,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
             status: 'PLAYING',
             currentTrackIndex: currentIndex + 1,
             timerSeconds: mode === 'JUKEBOX' ? JUKEBOX_MAX_SECONDS : SNIPPET_DURATION_SECONDS,
-            roundStartTime: Date.now(),
+            roundStartTime: Date.now() + serverOffset,
             tracks: updatedTracks,
             guesses: {},
             scoreDeltas: null,
@@ -395,7 +405,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
             status: 'INTERMISSION',
             currentTrackIndex: currentIndex + 1,
             timerSeconds: INTERMISSION_DURATION_SECONDS,
-            roundStartTime: Date.now(),
+            roundStartTime: Date.now() + serverOffset,
             guesses: {},
             scoreDeltas: null,
             playbackPaused: false,
@@ -409,7 +419,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           ...data,
           status: 'PLAYING',
           timerSeconds: SNIPPET_DURATION_SECONDS,
-          roundStartTime: Date.now(),
+          roundStartTime: Date.now() + serverOffset,
           guesses: {},
           scoreDeltas: null,
           playbackPaused: false,
@@ -418,7 +428,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
       return currentVal
     })
-  }, [room, myPlayerId])
+  }, [room, myPlayerId, serverOffset])
 
   const setMode = useCallback(
     async (code: string, mode: GameMode): Promise<void> => {
@@ -430,13 +440,8 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
   const jukeboxNavigate = useCallback(
     async (code: string, nav: { type: 'PREV' } | { type: 'NEXT' }): Promise<void> => {
-      if (!room || room.hostId !== myPlayerId) return
-      const callerId = myPlayerId
+      if (!room) return
       await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
-        if (currentVal !== null) {
-          const hostId = (currentVal as Record<string, unknown>).hostId as string | undefined
-          if (hostId !== callerId) return currentVal
-        }
         if (currentVal === null) return currentVal
         const data = currentVal as Record<string, unknown>
         const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
@@ -456,22 +461,74 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
           ...data,
           currentTrackIndex,
           timerSeconds: JUKEBOX_MAX_SECONDS,
-          roundStartTime: Date.now(),
+          roundStartTime: Date.now() + serverOffset,
           tracks: updatedTracks,
           scoreDeltas: null,
           playbackPaused: false,
         }
       })
     },
-    [room, myPlayerId],
+    [room, myPlayerId, serverOffset],
+  )
+
+  const jukeboxJump = useCallback(
+    async (code: string, index: number): Promise<void> => {
+      if (!room) return
+      await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+        if (currentVal === null) return currentVal
+        const data = currentVal as Record<string, unknown>
+        const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
+        if (index < 0 || index >= tracks.length) return currentVal
+        const updatedTracks = tracks.map((t, i) => (i === index ? { ...t, played: true } : t))
+        return {
+          ...data,
+          currentTrackIndex: index,
+          timerSeconds: JUKEBOX_MAX_SECONDS,
+          roundStartTime: Date.now() + serverOffset,
+          tracks: updatedTracks,
+          scoreDeltas: null,
+          playbackPaused: false,
+        }
+      })
+    },
+    [room, serverOffset],
+  )
+
+  const jukeboxSeek = useCallback(
+    async (code: string, seconds: number): Promise<void> => {
+      if (!room) return
+      const clamped = Math.max(0, Math.min(JUKEBOX_MAX_SECONDS, Math.floor(seconds)))
+      await update(ref(db, `rooms/${code}`), {
+        roundStartTime: Date.now() + serverOffset - clamped * 1000,
+        timerSeconds: Math.max(0, JUKEBOX_MAX_SECONDS - clamped),
+      })
+    },
+    [room, serverOffset],
   )
 
   const setPlaybackPaused = useCallback(
     async (code: string, paused: boolean): Promise<void> => {
-      if (!room || room.hostId !== myPlayerId) return
-      await update(ref(db, `rooms/${code}`), { playbackPaused: paused })
+      if (!room) return
+      if (paused) {
+        const elapsed = room.roundStartTime ? Math.floor((Date.now() + serverOffset - room.roundStartTime) / 1000) : 0
+        await update(ref(db, `rooms/${code}`), {
+          playbackPaused: true,
+          timerSeconds: Math.max(0, JUKEBOX_MAX_SECONDS - elapsed),
+        })
+      } else {
+        // Resume — reset roundStartTime so elapsed continues from pause point
+        const pausedElapsed = room.roundStartTime
+          ? Math.floor((Date.now() + serverOffset - room.roundStartTime) / 1000)
+          : 0
+        const remaining = Math.max(0, JUKEBOX_MAX_SECONDS - pausedElapsed)
+        await update(ref(db, `rooms/${code}`), {
+          playbackPaused: false,
+          roundStartTime: Date.now() + serverOffset - pausedElapsed * 1000,
+          timerSeconds: remaining,
+        })
+      }
     },
-    [room, myPlayerId],
+    [room, serverOffset],
   )
 
   const updateGameState = useCallback(
@@ -505,7 +562,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
     if (typeof room.roundStartTime !== 'number') {
       void update(ref(db, `rooms/${room.roomCode}`), {
-        roundStartTime: Date.now(),
+        roundStartTime: Date.now() + serverOffset,
         timerSeconds: duration,
       })
       return
@@ -513,7 +570,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
     const code = room.roomCode
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - (room.roundStartTime as number)) / 1000)
+      const elapsed = Math.floor((Date.now() + serverOffset - (room.roundStartTime as number)) / 1000)
       const remaining = Math.max(0, duration - elapsed)
       if (remaining !== room.timerSeconds) {
         void update(ref(db, `rooms/${code}`), { timerSeconds: remaining })
@@ -530,7 +587,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     tick()
     const id = window.setInterval(tick, 500)
     return () => window.clearInterval(id)
-  }, [room, myPlayerId, hostReveal, hostNext])
+  }, [room, myPlayerId, hostReveal, hostNext, serverOffset])
 
   const isHost = room !== null && myPlayerId !== null && room.hostId === myPlayerId
 
@@ -538,6 +595,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     room,
     myPlayerId,
     isHost,
+    serverOffset,
     createRoom,
     joinRoom,
     submitSongs,
@@ -547,6 +605,8 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     hostNext,
     setMode,
     jukeboxNavigate,
+    jukeboxJump,
+    jukeboxSeek,
     setPlaybackPaused,
     updateGameState,
     leaveRoom,
