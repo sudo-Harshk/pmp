@@ -29,6 +29,7 @@ export default function GameView({
   const [voteLocked, setVoteLocked] = useState(false)
   const [playerError, setPlayerError] = useState<number | null>(null)
 
+  const isSubmitter = myName ? track.submittedBy.includes(myName) : false
   const hasVoted = Boolean(myGuess) || voteLocked
 
   function handleGuess(name: string) {
@@ -145,9 +146,13 @@ export default function GameView({
 
         <div className="mt-6">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {hasVoted ? 'Vote Locked ✅' : 'Who submitted this song?'}
+            {isSubmitter ? 'Your song — sit out' : hasVoted ? 'Vote Locked ✅' : 'Who submitted this song?'}
           </h3>
-          {hasVoted ? (
+          {isSubmitter ? (
+            <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm font-semibold text-amber-200">
+              This is your song — you all listen together, but you sit out voting. You earn bonus if others guess wrong.
+            </p>
+          ) : hasVoted ? (
             <p className="rounded-lg bg-indigo-500/10 px-3 py-2 text-center font-semibold text-indigo-300">
               Vote Locked ✅ You guessed {myGuess}. Waiting for the reveal…
             </p>
@@ -155,17 +160,16 @@ export default function GameView({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {candidates.map((name) => {
                 const isSelf = name === myName
-                const isTaken = Object.values(room.guesses).includes(name)
                 return (
                   <button
                     key={name}
                     type="button"
-                    disabled={isSelf || isTaken || hasVoted}
+                    disabled={isSelf || hasVoted}
                     onClick={() => handleGuess(name)}
                     className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {name}
-                    {isSelf ? ' (You)' : isTaken ? ' ✓' : ''}
+                    {isSelf ? ' (You)' : ''}
                   </button>
                 )
               })}
