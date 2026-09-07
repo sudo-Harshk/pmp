@@ -1,3 +1,4 @@
+import { MAX_SONGS_PER_PLAYER, MIN_SONGS_PER_PLAYER } from '@/lib/roomLifecycle'
 import type { GameMode, RoomState } from '@/types/game'
 
 interface LobbyViewProps {
@@ -6,6 +7,7 @@ interface LobbyViewProps {
   isHost: boolean
   onStartSubmission: () => void
   onSetMode: (mode: GameMode) => void
+  onSetSongsPerPlayer: (count: number) => void
   onLeave: () => void
 }
 
@@ -15,6 +17,7 @@ export default function LobbyView({
   isHost,
   onStartSubmission,
   onSetMode,
+  onSetSongsPerPlayer,
   onLeave,
 }: LobbyViewProps) {
   const players = Object.values(room.players)
@@ -63,6 +66,38 @@ export default function LobbyView({
 
       {isHost ? (
         <>
+          <div className="mt-6 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Songs per player
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSetSongsPerPlayer(room.songsPerPlayer - 1)}
+                disabled={room.songsPerPlayer <= MIN_SONGS_PER_PLAYER}
+                aria-label="Fewer songs per player"
+                className="h-8 w-8 rounded-md border border-slate-600 text-slate-300 transition hover:bg-slate-700 disabled:opacity-40"
+              >
+                −
+              </button>
+              <span className="w-8 text-center text-sm font-semibold text-white">
+                {room.songsPerPlayer}
+              </span>
+              <button
+                type="button"
+                onClick={() => onSetSongsPerPlayer(room.songsPerPlayer + 1)}
+                disabled={room.songsPerPlayer >= MAX_SONGS_PER_PLAYER}
+                aria-label="More songs per player"
+                className="h-8 w-8 rounded-md border border-slate-600 text-slate-300 transition hover:bg-slate-700 disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Fixed for everyone — each player must submit exactly this many.
+          </p>
+
           <div className="mt-6">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
               Mode
@@ -103,9 +138,15 @@ export default function LobbyView({
           </button>
         </>
       ) : (
-        <p className="mt-6 rounded-lg bg-slate-800/70 px-3 py-3 text-center text-sm text-slate-300">
-          Waiting for the host to start the game…
-        </p>
+        <>
+          <p className="mt-6 rounded-lg bg-slate-800/70 px-3 py-3 text-center text-sm text-slate-300">
+            Each player submits exactly {room.songsPerPlayer} song
+            {room.songsPerPlayer === 1 ? '' : 's'}.
+          </p>
+          <p className="mt-3 rounded-lg bg-slate-800/70 px-3 py-3 text-center text-sm text-slate-300">
+            Waiting for the host to start the game…
+          </p>
+        </>
       )}
 
       <button

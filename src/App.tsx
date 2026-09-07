@@ -28,6 +28,7 @@ export default function App() {
     startSubmission,
     hostNext,
     setMode,
+    setSongsPerPlayer,
     jukeboxNavigate,
     jukeboxJump,
     jukeboxSeek,
@@ -142,6 +143,7 @@ export default function App() {
             onGuess={handleGuess}
             onNext={() => roomCode && hostNext(roomCode)}
             onSetMode={(mode: GameMode) => roomCode && setMode(roomCode, mode)}
+            onSetSongsPerPlayer={(count: number) => roomCode && setSongsPerPlayer(roomCode, count)}
             onJukeboxNavigate={(nav: { type: 'PREV' } | { type: 'NEXT' }) =>
               roomCode && jukeboxNavigate(roomCode, nav)
             }
@@ -176,6 +178,7 @@ interface ContentProps {
   onGuess: (guessedName: string) => void
   onNext: () => void
   onSetMode: (mode: GameMode) => void
+  onSetSongsPerPlayer: (count: number) => void
   onJukeboxNavigate: (nav: { type: 'PREV' } | { type: 'NEXT' }) => void
   onJukeboxJump: (index: number) => void
   onJukeboxSeek: (seconds: number) => void
@@ -195,6 +198,7 @@ function Content({
   onGuess,
   onNext,
   onSetMode,
+  onSetSongsPerPlayer,
   onJukeboxNavigate,
   onJukeboxJump,
   onJukeboxSeek,
@@ -212,6 +216,7 @@ function Content({
           isHost={isHost}
           onStartSubmission={onStartSubmission}
           onSetMode={onSetMode}
+          onSetSongsPerPlayer={onSetSongsPerPlayer}
           onLeave={onLeave}
         />
       )

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { RoomState } from '@/types/game'
+import { hasExactCount } from '@/lib/roomLifecycle'
 import { extractVideoId } from '@/lib/youtube'
 
 interface SubmissionViewProps {
@@ -11,9 +12,6 @@ interface SubmissionViewProps {
   onNext: () => void
 }
 
-const DEFAULT_COUNT = 3
-const MAX_SONGS = 10
-
 export default function SubmissionView({
   room,
   myPlayerId,
@@ -21,32 +19,23 @@ export default function SubmissionView({
   onSubmitSongs,
   onNext,
 }: SubmissionViewProps) {
-  const [songCount, setSongCount] = useState(DEFAULT_COUNT)
-  const [urls, setUrls] = useState<string[]>(() =>
-    Array.from({ length: DEFAULT_COUNT }, () => ''),
-  )
+  // Host-fixed count from the lobby — every player submits exactly this many
+  const songCount = room.songsPerPlayer
+  const [urls, setUrls] = useState<string[]>(() => Array.from({ length: songCount }, () => ''))
 
   const players = Object.values(room.players)
   const me = myPlayerId ? room.players[myPlayerId] : undefined
   const allSubmitted =
     players.length > 0 && players.every((p) => p.hasSubmitted === true)
 
-  function updateCount(newCount: number) {
-    const count = Math.max(1, Math.min(MAX_SONGS, newCount))
-    setSongCount(count)
-    setUrls((prev) => {
-      const next = [...prev]
-      while (next.length < count) next.push('')
-      return next.slice(0, count)
-    })
-  }
-
   const validCount = urls.filter((u) => u.trim() !== '' && extractVideoId(u) !== null).length
+  const exactReady = hasExactCount(validCount, songCount)
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const validUrls = urls.filter((u) => u.trim() !== '' && extractVideoId(u) !== null)
-    if (validUrls.length === 0) return
+    // Host-fixed count: short submissions are not accepted
+    if (!hasExactCount(validUrls.length, songCount)) return
     onSubmitSongs(validUrls)
   }
 
@@ -55,33 +44,9 @@ export default function SubmissionView({
       <div className="w-full flex-1 rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-xl">
         <h2 className="text-2xl font-bold text-white">Submit Your Songs</h2>
         <p className="mb-5 mt-1 text-sm text-slate-400">
-          Add {songCount} YouTube links {me ? `as ${me.name}` : ''}.
+          Add exactly {songCount} YouTube link{songCount === 1 ? '' : 's'}{' '}
+          {me ? `as ${me.name}` : ''} (host fixed the count).
         </p>
-
-        <div className="mb-4 flex items-center justify-between">
-          <label htmlFor="song-count" className="text-sm font-medium text-slate-300">
-            Number of songs
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => updateCount(songCount - 1)}
-              disabled={songCount <= 1}
-              className="h-8 w-8 rounded-md border border-slate-600 text-slate-300 transition hover:bg-slate-700 disabled:opacity-40"
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-sm font-semibold text-white">{songCount}</span>
-            <button
-              type="button"
-              onClick={() => updateCount(songCount + 1)}
-              disabled={songCount >= MAX_SONGS}
-              className="h-8 w-8 rounded-md border border-slate-600 text-slate-300 transition hover:bg-slate-700 disabled:opacity-40"
-            >
-              +
-            </button>
-          </div>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-3">
@@ -119,10 +84,14 @@ export default function SubmissionView({
 
           <button
             type="submit"
-            disabled={validCount === 0 || me?.hasSubmitted === true}
+            disabled={!exactReady || me?.hasSubmitted === true}
             className="w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
           >
-            {me?.hasSubmitted ? 'Submitted ✓' : `Submit ${validCount} Song${validCount === 1 ? '' : 's'}`}
+            {me?.hasSubmitted
+              ? 'Submitted ✓'
+              : exactReady
+                ? `Submit ${songCount} Song${songCount === 1 ? '' : 's'}`
+                : `Add ${songCount - validCount} more`}
           </button>
         </form>
       </div>

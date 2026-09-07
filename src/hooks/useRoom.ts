@@ -20,7 +20,14 @@ import {
   shuffleFisherYates,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
-import { buildPlayAgainReset, isNameTaken, removePlayer } from '@/lib/roomLifecycle'
+import {
+  buildPlayAgainReset,
+  clampSongCount,
+  DEFAULT_SONGS_PER_PLAYER,
+  isNameTaken,
+  limitUrls,
+  removePlayer,
+} from '@/lib/roomLifecycle'
 import { clearSession, getSession } from '@/lib/storage'
 import type {
   GameMode,
@@ -92,6 +99,10 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
     status: (data.status as RoomState['status']) ?? 'LOBBY',
     hostId: (data.hostId as string) ?? '',
     mode: (data.mode as GameMode) ?? 'GUESSING',
+    songsPerPlayer:
+      typeof data.songsPerPlayer === 'number'
+        ? clampSongCount(data.songsPerPlayer)
+        : DEFAULT_SONGS_PER_PLAYER,
     players,
     tracks: Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : [],
     currentTrackIndex:
@@ -119,6 +130,7 @@ export interface UseRoomResult {
   hostReveal: (roomCode: string) => Promise<void>
   hostNext: (roomCode: string) => Promise<void>
   setMode: (roomCode: string, mode: GameMode) => Promise<void>
+  setSongsPerPlayer: (roomCode: string, count: number) => Promise<void>
   jukeboxNavigate: (
     roomCode: string,
     nav: { type: 'PREV' } | { type: 'NEXT' },
@@ -218,6 +230,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
         status: 'LOBBY',
         hostId,
         mode: 'GUESSING',
+        songsPerPlayer: DEFAULT_SONGS_PER_PLAYER,
         players: { [hostId]: { id: hostId, name: hostName, score: 0, hasSubmitted: false, bestRound: 0 } },
         tracks: [],
         currentTrackIndex: 0,
@@ -281,8 +294,10 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
         if (currentVal === null) return currentVal
         const data = currentVal as Record<string, unknown>
+        // Host-fixed count enforced server-side: extras truncated, never stored
+        const count = clampSongCount(data.songsPerPlayer)
         const submissions = (data.submissions as Record<string, string[]>) ?? {}
-        submissions[playerId] = normalized
+        submissions[playerId] = limitUrls(normalized, count)
         const playersData = (data.players as Record<string, Player>) ?? {}
         const tracks = computeTracks(submissions, playersData)
         return {
@@ -464,6 +479,15 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     async (code: string, mode: GameMode): Promise<void> => {
       if (!room || room.hostId !== myPlayerId) return
       await update(ref(db, `rooms/${code}`), { mode })
+    },
+    [room, myPlayerId],
+  )
+
+  const setSongsPerPlayer = useCallback(
+    async (code: string, count: number): Promise<void> => {
+      // Lobby-only: the count is fixed before submissions open, never mid-game
+      if (!room || room.hostId !== myPlayerId || room.status !== 'LOBBY') return
+      await update(ref(db, `rooms/${code}`), { songsPerPlayer: clampSongCount(count) })
     },
     [room, myPlayerId],
   )
@@ -658,6 +682,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     hostReveal,
     hostNext,
     setMode,
+    setSongsPerPlayer,
     jukeboxNavigate,
     jukeboxJump,
     jukeboxSeek,

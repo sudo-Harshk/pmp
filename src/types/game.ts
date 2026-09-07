@@ -48,6 +48,7 @@ export interface RoomState {
   status: RoomStatus
   hostId: string
   mode: GameMode
+  songsPerPlayer: number
   players: Record<string, Player>
   tracks: PlaylistTrack[]
   currentTrackIndex: number

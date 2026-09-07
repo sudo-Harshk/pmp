@@ -72,19 +72,19 @@ graph TD
     LIB --> SC[scoring.ts<br/>calculateRoundScores<br/>live-submitter split, self-farm blocked]
      LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
      LIB --> RN[roomNames.ts<br/>generateRoomName - Indian pop-culture word banks, ≤32 chars]
-    LIB --> RL[roomLifecycle.ts<br/>resetPlayersForPlayAgain / removePlayer / buildPlayAgainReset / isNameTaken]
+    LIB --> RL[roomLifecycle.ts<br/>resetPlayersForPlayAgain / removePlayer / buildPlayAgainReset / isNameTaken<br/>clampSongCount / limitUrls / hasExactCount + MIN/MAX/DEFAULT]
     LIB --> ST[storage.ts<br/>localStorage session helpers]
     SRC --> UTIL[components/Toasts.tsx<br/>players diff → 🟢/🔴/👑 toasts, 4s auto-dismiss]
 
      SRC --> HOOKS[hooks/]
-    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>createRoom/joinRoom + onDisconnect + mid-game rejoin (blocked only at GAMEOVER)<br/>playAgain (host reset same room) / endRoom (host delete) / leaveRoom (last-leave auto-delete)<br/>hostNext (shuffle host-only; PLAYING skip open to anyone) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker + deleted-node home routing]
+    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>createRoom/joinRoom + onDisconnect + mid-game rejoin (blocked only at GAMEOVER)<br/>setSongsPerPlayer (host + LOBBY only) / submitSongs (truncates to count)<br/>playAgain (host reset same room) / endRoom (host delete) / leaveRoom (last-leave auto-delete)<br/>hostNext (shuffle host-only; PLAYING skip open to anyone) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker + deleted-node home routing]
 
     SRC --> COMP[components/]
     COMP --> YTP[YouTubePlayer.tsx<br/>react-youtube wrapper<br/>seekTo/getCurrentTime/getDuration + onStateChange]
     COMP --> GAMEV[game/]
-    GAMEV --> ENTRY[EntryView.tsx<br/>Create (Your Name + auto Room Name + 🎲 reroll) / Join (mid-game allowed)]
-    GAMEV --> LOBBY[LobbyView.tsx<br/>🎬 roomName + room code + roster + mode toggle]
-    GAMEV --> SUB[SubmissionView.tsx<br/>song form + readiness + Start Game/Playback (host enabled when tracks>0, not gated on allSubmitted)]
+    GAMEV --> ENTRY[EntryView.tsx<br/>Create (Your Name + auto Room Name + 🎲 reroll) / Join (mid-game allowed, unique names)]
+    GAMEV --> LOBBY[LobbyView.tsx<br/>🎬 roomName + room code + roster + mode toggle + host Songs-per-player stepper]
+    GAMEV --> SUB[SubmissionView.tsx<br/>exactly-N song form (host-fixed count, no stepper) + readiness + Start Game/Playback (host enabled when tracks>0)]
       GAMEV --> GV[GameView.tsx<br/>player + absolute 30s timer + concealed dummy vote + hide-self + audio-only + Skip Unplayable (everyone, 101/150/100 only)]
     GAMEV --> JB[JukeboxView.tsx<br/>common shuffled queue + seek sync + seek bar + queue tap<br/>anyone Prev/Pause/Next/Seek/Skip + visible queue like Spotify]
     GAMEV --> IM[IntermissionView.tsx<br/>7s countdown banner]
@@ -122,7 +122,8 @@ Rooms are stored flat under `rooms/{roomCode}` where `roomCode` is a 4-letter co
 ```
 rooms/{roomCode}
 ├── roomCode: string        # "ABCD"
-├── roomName: string        # e.g. "Gully Groovers" — auto-generated (Indian pop-culture), ≤32 chars, editable with 🎲 reroll; host name is separate
+├── roomName: string        # e.g. "Pokiri Playlist" — Telugu-cinema auto-generated, ≤32 chars, 🎲 reroll with 💡 meaning; host name is separate
+├── songsPerPlayer: number  # host-fixed in LOBBY (1–10, default 3); submissions must match exactly, extras truncated
 ├── status: string          # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
 ├── mode: string            # GUESSING | JUKEBOX (default GUESSING)
 ├── hostId: string          # player id of the host (auto-failover to first remaining if host leaves)

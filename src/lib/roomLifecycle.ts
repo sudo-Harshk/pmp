@@ -1,6 +1,26 @@
 import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
 import type { Player, RoomState } from '@/types/game'
 
+export const MIN_SONGS_PER_PLAYER = 1
+export const MAX_SONGS_PER_PLAYER = 10
+export const DEFAULT_SONGS_PER_PLAYER = 3
+
+/** Clamp any input to a valid per-player song count (1–10, default 3). */
+export function clampSongCount(n: unknown): number {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return DEFAULT_SONGS_PER_PLAYER
+  return Math.min(MAX_SONGS_PER_PLAYER, Math.max(MIN_SONGS_PER_PLAYER, Math.floor(n)))
+}
+
+/** Keep only the first `count` items — devtools-proof submission backstop. */
+export function limitUrls<T>(items: T[], count: number): T[] {
+  return items.slice(0, clampSongCount(count))
+}
+
+/** True only when the submission has exactly the required count. */
+export function hasExactCount(validCount: number, required: number): boolean {
+  return validCount === clampSongCount(required)
+}
+
 /** Reset every player's score/ready state for a rematch, keeping id + name. */
 export function resetPlayersForPlayAgain(
   players: Record<string, Player>,

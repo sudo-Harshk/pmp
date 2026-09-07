@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPlayAgainReset,
+  clampSongCount,
+  DEFAULT_SONGS_PER_PLAYER,
+  hasExactCount,
   isNameTaken,
+  limitUrls,
+  MAX_SONGS_PER_PLAYER,
+  MIN_SONGS_PER_PLAYER,
   removePlayer,
   resetPlayersForPlayAgain,
 } from '@/lib/roomLifecycle'
@@ -139,5 +145,79 @@ describe('BLACK-BOX: duplicate-name spec', () => {
     const players: Record<string, Player> = { p1: makePlayer('p1', 'Alice') }
     expect(isNameTaken(players, 'Alice')).toBe(true)
     expect(isNameTaken(players, 'Carol')).toBe(false)
+  })
+})
+
+// WHITE-BOX: clampSongCount branches
+describe('WHITE-BOX: clampSongCount branches', () => {
+  it('branch: valid int passes through', () => {
+    expect(clampSongCount(5)).toBe(5)
+    expect(clampSongCount(MIN_SONGS_PER_PLAYER)).toBe(MIN_SONGS_PER_PLAYER)
+    expect(clampSongCount(MAX_SONGS_PER_PLAYER)).toBe(MAX_SONGS_PER_PLAYER)
+  })
+  it('branch: below min clamps to min', () => {
+    expect(clampSongCount(0)).toBe(MIN_SONGS_PER_PLAYER)
+    expect(clampSongCount(-3)).toBe(MIN_SONGS_PER_PLAYER)
+  })
+  it('branch: above max clamps to max', () => {
+    expect(clampSongCount(11)).toBe(MAX_SONGS_PER_PLAYER)
+    expect(clampSongCount(100)).toBe(MAX_SONGS_PER_PLAYER)
+  })
+  it('branch: fractions floor down', () => {
+    expect(clampSongCount(4.9)).toBe(4)
+  })
+  it('branch: non-number/NaN/Infinity → default', () => {
+    expect(clampSongCount(undefined)).toBe(DEFAULT_SONGS_PER_PLAYER)
+    expect(clampSongCount(null)).toBe(DEFAULT_SONGS_PER_PLAYER)
+    expect(clampSongCount('5')).toBe(DEFAULT_SONGS_PER_PLAYER)
+    expect(clampSongCount(NaN)).toBe(DEFAULT_SONGS_PER_PLAYER)
+    expect(clampSongCount(Infinity)).toBe(DEFAULT_SONGS_PER_PLAYER)
+  })
+})
+
+// WHITE-BOX: limitUrls branches
+describe('WHITE-BOX: limitUrls branches', () => {
+  it('branch: extras truncated to count', () => {
+    expect(limitUrls(['a', 'b', 'c', 'd', 'e'], 3)).toEqual(['a', 'b', 'c'])
+  })
+  it('branch: exact count kept whole', () => {
+    expect(limitUrls(['a', 'b', 'c'], 3)).toEqual(['a', 'b', 'c'])
+  })
+  it('branch: short list passes through untouched', () => {
+    expect(limitUrls(['a'], 3)).toEqual(['a'])
+    expect(limitUrls([], 3)).toEqual([])
+  })
+  it('branch: garbage count falls back to default clamp', () => {
+    expect(limitUrls(['a', 'b', 'c', 'd'], undefined as unknown as number)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+// WHITE-BOX: hasExactCount branches
+describe('WHITE-BOX: hasExactCount branches', () => {
+  it('branch: exact → true', () => {
+    expect(hasExactCount(3, 3)).toBe(true)
+  })
+  it('branch: short or long → false', () => {
+    expect(hasExactCount(2, 3)).toBe(false)
+    expect(hasExactCount(4, 3)).toBe(false)
+    expect(hasExactCount(0, 3)).toBe(false)
+  })
+  it('branch: required clamped before compare', () => {
+    expect(hasExactCount(10, 99)).toBe(true)
+    expect(hasExactCount(1, 0)).toBe(true)
+  })
+})
+
+// BLACK-BOX: host-fixed count spec
+describe('BLACK-BOX: host-fixed count spec', () => {
+  it('submit button enables only at exactly N valid links', () => {
+    expect(hasExactCount(5, 5)).toBe(true)
+    expect(hasExactCount(4, 5)).toBe(false)
+    expect(hasExactCount(6, 5)).toBe(false)
+  })
+  it('devtools oversubmit is truncated, never stored whole', () => {
+    const stored = limitUrls(['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'], 5)
+    expect(stored).toHaveLength(5)
+    expect(stored).toEqual(['u1', 'u2', 'u3', 'u4', 'u5'])
   })
 })

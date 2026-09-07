@@ -157,9 +157,17 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
 | Room names rigorous          | `roomNames.rigorous.test.ts` | 10 | Telugu-cinema bank: exhaustive ≤32/meanings + dice spec |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
-| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 18 | Reset keeps roster, last-leave deletes, rematch + duplicate-name spec |
+| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 32 | Reset, last-leave, rematch, duplicate names + host-fixed count spec |
 | Build marker                 | `version.rigorous.test.ts` | 5 | Missing/blank/40-char/short/custom label branches |
-| **Total**                    |                          | **226**|                                                   |
+| **Total**                    |                          | **240**|                                                   |
+
+## Host-Fixed Song Count (Exactly N)
+
+**Gap:** Every player picked their own song count (local stepper 1–10); `submitSongs` accepted any number — 2 vs 8 songs in the same game, nothing enforced.
+
+**Fix:** New `RoomState.songsPerPlayer` (default 3, legacy fallback). Host-only `setSongsPerPlayer` in `src/hooks/useRoom.ts` (caller-is-host + `LOBBY` guards, clamped 1–10); `src/components/game/LobbyView.tsx` host stepper + guest static line. `src/components/game/SubmissionView.tsx` drops the per-client stepper, renders exactly N inputs, Submit enables only at `validCount === N` (`Add X more` otherwise); `submitSongs` transaction truncates stored URLs to the first N (devtools-proof backstop). `playAgain` preserves the count (room setting like `mode`).
+
+**Tests:** +14 cases (`clampSongCount` valid/min/max/fraction/garbage, `limitUrls` truncate/exact/short/fallback, `hasExactCount` exact/short/long/clamped, spec: button gating + oversubmit truncation). `240` total.
 
 ## Ops — Deployment Currency Litmus + Footer Build Marker
 
