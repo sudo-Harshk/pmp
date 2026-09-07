@@ -126,7 +126,6 @@ export interface UseRoomResult {
   jukeboxJump: (roomCode: string, index: number) => Promise<void>
   jukeboxSeek: (roomCode: string, seconds: number) => Promise<void>
   setPlaybackPaused: (roomCode: string, paused: boolean) => Promise<void>
-  updateGameState: (roomCode: string, updates: Partial<RoomState>) => Promise<void>
   leaveRoom: (roomCode: string, playerId: string) => Promise<void>
   playAgain: (roomCode: string) => Promise<void>
   endRoom: (roomCode: string) => Promise<void>
@@ -562,13 +561,6 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     [room, serverOffset],
   )
 
-  const updateGameState = useCallback(
-    async (code: string, updates: Partial<RoomState>): Promise<void> => {
-      await update(ref(db, `rooms/${code}`), updates as Record<string, unknown>)
-    },
-    [],
-  )
-
   const leaveRoom = useCallback(
     async (code: string, playerId: string): Promise<void> => {
       await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
@@ -670,7 +662,6 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     jukeboxJump,
     jukeboxSeek,
     setPlaybackPaused,
-    updateGameState,
     leaveRoom,
     playAgain,
     endRoom,

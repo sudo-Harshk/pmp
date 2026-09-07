@@ -138,6 +138,10 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** No new suite (one-condition JSX change; the `shouldShowSkip` branches are already covered in `bugfixes.rigorous.test.ts`). `221` total unchanged.
 
+## Phase 4 — Dead Code Removal
+
+**Fix:** Removed unused `updateGameState` from `src/hooks/useRoom.ts` (interface + implementation + export — zero callers, and it bypassed all host guards). `221` total unchanged.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
