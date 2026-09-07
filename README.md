@@ -6,7 +6,7 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 
 ## Highlights
 
-- **Real-time multiplayer** — rooms with auto-generated fun names (`Gully Groovers`, `Masala Beats` — tap 🎲 to reroll), live submissions, voting, and a host-managed loop synced over Firebase RTDB.
+- **Real-time multiplayer** — rooms with auto-generated Telugu-cinema names (`Pokiri Playlist`, `DJ Tillu Tunes` — tap 🎲 to reroll, each with its joke explained 💡), live submissions, voting, and a host-managed loop synced over Firebase RTDB.
 - **Two play modes** — host picks in the lobby: **Guessing Game** (30 s snippet + voting + reveal + 7 s intermission) or **Casual Jukebox** (common shuffled playlist, full playback up to 3 min, Spotify-like jam).
 - **Shuffled playlist** — Fisher–Yates shuffle (open-source, `crypto.getRandomValues` → `Math.random` fallback) once at game start so order is never straight; deduped tracks never leak submitter order.
 - **Watch-party sync** — absolute `roundStartTime` + server-clock correction + `seekTo` drift fix (everyone hears the same second, even late join).
@@ -94,10 +94,10 @@ npm test
 - **Scoring** — `src/lib/scoring.test.ts` (10) + `scoring.rigorous.test.ts` (19) — ghost/self-farm/leakage/remainder/rounding
 - **Player logic / timer + shuffle + intermission/jukebox** — `src/lib/playerLogic.test.ts` (26) + `playerLogic.rigorous.test.ts` (27) — reducer branches, navigate, shuffle crypto/fallback/retry
 - **Session storage** — `src/lib/storage.test.ts` (9) + `storage.rigorous.test.ts` (10) — malformed/missing/overwrite/clear
-- **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (7) — pick/slice/trim + fallback
+- **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (10) — 48 Telugu-cinema names with meanings, exhaustive ≤32
 - **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
 - **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (10) — reset keeps roster, last-leave deletes, rematch spec
-- **Total: 210 tests across 12 suites — all white-box + black-box for every bug fix**
+- **Total: 213 tests across 12 suites — all white-box + black-box for every bug fix**
 
 ## Hosting
 

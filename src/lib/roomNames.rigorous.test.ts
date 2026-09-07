@@ -1,50 +1,81 @@
 import { describe, expect, it } from 'vitest'
-import { generateRoomName } from '@/lib/roomNames'
+import {
+  generateRoomName,
+  generateRoomNameEntry,
+  getRoomNameMeaning,
+  ROOM_NAMES,
+} from '@/lib/roomNames'
 
-// WHITE-BOX: branches of generateRoomName → pick + slice + trim
-describe('WHITE-BOX: generateRoomName branches', () => {
-  it('branch: pick returns valid adjective + noun → two words', () => {
-    const name = generateRoomName()
-    const parts = name.split(' ')
-    expect(parts.length).toBeGreaterThanOrEqual(2)
-    expect(parts[0].length).toBeGreaterThan(0)
-    expect(parts[1].length).toBeGreaterThan(0)
+// WHITE-BOX: exhaustive over the curated bank + generator branches
+describe('WHITE-BOX: Telugu-cinema room name bank', () => {
+  it('bank is non-empty with variety', () => {
+    expect(ROOM_NAMES.length).toBeGreaterThanOrEqual(20)
+    expect(new Set(ROOM_NAMES.map((e) => e.name)).size).toBe(ROOM_NAMES.length)
   })
-  it('branch: slice 0,32 → never exceeds 32', () => {
-    for (let i = 0; i < 100; i++) expect(generateRoomName().length).toBeLessThanOrEqual(32)
-  })
-  it('branch: trim → no leading/trailing spaces', () => {
-    for (let i = 0; i < 50; i++) {
-      const n = generateRoomName()
-      expect(n).toBe(n.trim())
-      expect(n).not.toMatch(/^\s/)
-      expect(n).not.toMatch(/\s$/)
+
+  it('every entry: name non-blank, ≤32 chars, trimmed, ≥2 words', () => {
+    for (const entry of ROOM_NAMES) {
+      expect(entry.name.trim().length).toBeGreaterThan(0)
+      expect(entry.name).toBe(entry.name.trim())
+      expect(entry.name.length).toBeLessThanOrEqual(32)
+      expect(entry.name.split(' ').length).toBeGreaterThanOrEqual(2)
     }
   })
-  it('branch: never returns empty (word banks non-empty)', () => {
-    for (let i = 0; i < 50; i++) expect(generateRoomName().length).toBeGreaterThan(0)
+
+  it('every entry: meaning non-blank and references its movie', () => {
+    for (const entry of ROOM_NAMES) {
+      expect(entry.meaning.trim().length).toBeGreaterThan(10)
+      expect(entry.meaning).toBe(entry.meaning.trim())
+    }
+  })
+
+  it('branch: generateRoomNameEntry returns a bank member', () => {
+    for (let i = 0; i < 30; i++) {
+      const entry = generateRoomNameEntry()
+      expect(ROOM_NAMES).toContainEqual(entry)
+    }
+  })
+
+  it('branch: generateRoomName slices + trims (≤32, never blank)', () => {
+    for (let i = 0; i < 50; i++) {
+      const name = generateRoomName()
+      expect(name.length).toBeGreaterThan(0)
+      expect(name.length).toBeLessThanOrEqual(32)
+      expect(name).toBe(name.trim())
+    }
+  })
+
+  it('branch: getRoomNameMeaning round-trips every entry', () => {
+    for (const entry of ROOM_NAMES) {
+      expect(getRoomNameMeaning(entry.name)).toBe(entry.meaning)
+    }
+  })
+
+  it('branch: getRoomNameMeaning tolerates surrounding whitespace', () => {
+    const first = ROOM_NAMES[0]
+    expect(getRoomNameMeaning(`  ${first.name}  `)).toBe(first.meaning)
+  })
+
+  it('branch: getRoomNameMeaning returns null for hand-typed/unknown names', () => {
+    expect(getRoomNameMeaning('My Custom Room')).toBeNull()
+    expect(getRoomNameMeaning('')).toBeNull()
+    expect(getRoomNameMeaning('   ')).toBeNull()
   })
 })
 
-// BLACK-BOX: spec
-describe('BLACK-BOX: generateRoomName spec', () => {
-  it('returns pop-culture flavored two-word name, auto-generated no input needed', () => {
-    const n = generateRoomName()
-    expect(n.split(' ').length).toBe(2)
-  })
-  it('variety over many calls (random)', () => {
-    const s = new Set<string>()
-    for (let i = 0; i < 30; i++) s.add(generateRoomName())
-    expect(s.size).toBeGreaterThan(1)
-  })
-  it('fallback for legacy rooms without roomName → Room {code} (simulated)', () => {
-    function fromFirestoreRoomFallback(roomName: unknown, code: string): string {
-      return typeof roomName === 'string' && roomName.trim().length > 0 ? roomName.trim().slice(0, 32) : `Room ${code}`
+// BLACK-BOX: spec — dice roll gives a funny name with its meaning
+describe('BLACK-BOX: room name dice spec', () => {
+  it('every roll produces a two-word name with an explanation', () => {
+    for (let i = 0; i < 20; i++) {
+      const entry = generateRoomNameEntry()
+      expect(entry.name.split(' ').length).toBeGreaterThanOrEqual(2)
+      expect(getRoomNameMeaning(entry.name)).toBe(entry.meaning)
     }
-    expect(fromFirestoreRoomFallback(undefined, 'ABCD')).toBe('Room ABCD')
-    expect(fromFirestoreRoomFallback('', 'ABCD')).toBe('Room ABCD')
-    expect(fromFirestoreRoomFallback('   ', 'ABCD')).toBe('Room ABCD')
-    expect(fromFirestoreRoomFallback('Gully Groovers', 'ABCD')).toBe('Gully Groovers')
-    expect(fromFirestoreRoomFallback('A'.repeat(40), 'ABCD')).toHaveLength(32)
+  })
+
+  it('rolls vary across calls', () => {
+    const seen = new Set<string>()
+    for (let i = 0; i < 40; i++) seen.add(generateRoomName())
+    expect(seen.size).toBeGreaterThan(1)
   })
 })

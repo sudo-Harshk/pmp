@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { generateRoomName } from '@/lib/roomNames'
+import { generateRoomNameEntry, getRoomNameMeaning } from '@/lib/roomNames'
 
 interface EntryViewProps {
   onCreateRoom: (hostName: string, roomName: string) => Promise<{ roomCode: string; playerId: string }>
@@ -18,7 +18,9 @@ export default function EntryView({
   const [mode, setMode] = useState<Mode>('create')
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
-  const [roomName, setRoomName] = useState(() => generateRoomName())
+  const [initialEntry] = useState(() => generateRoomNameEntry())
+  const [roomName, setRoomName] = useState(initialEntry.name)
+  const [roomMeaning, setRoomMeaning] = useState<string | null>(initialEntry.meaning)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -31,7 +33,7 @@ export default function EntryView({
     setError(null)
     try {
       if (mode === 'create') {
-        const safeRoomName = roomName.trim().slice(0, 32) || generateRoomName()
+        const safeRoomName = roomName.trim().slice(0, 32) || generateRoomNameEntry().name
         const result = await onCreateRoom(name.trim(), safeRoomName)
         onEntered(result.roomCode)
       } else {
@@ -113,14 +115,21 @@ export default function EntryView({
                 id="room-name"
                 type="text"
                 value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                placeholder="e.g. Gully Groovers"
+                onChange={(e) => {
+                  setRoomName(e.target.value)
+                  setRoomMeaning(getRoomNameMeaning(e.target.value))
+                }}
+                placeholder="e.g. Pokiri Playlist"
                 maxLength={32}
                 className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white placeholder-slate-500 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
               />
               <button
                 type="button"
-                onClick={() => setRoomName(generateRoomName())}
+                onClick={() => {
+                  const entry = generateRoomNameEntry()
+                  setRoomName(entry.name)
+                  setRoomMeaning(entry.meaning)
+                }}
                 title="Generate another name"
                 aria-label="Generate another room name"
                 className="shrink-0 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-lg leading-none transition hover:border-indigo-500 hover:bg-slate-700"
@@ -128,9 +137,13 @@ export default function EntryView({
                 🎲
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Auto-generated — tap 🎲 to reroll or edit. A 4-letter code is also created.
-            </p>
+            {roomMeaning ? (
+              <p className="mt-1 text-xs text-amber-200/80">💡 {roomMeaning}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">
+                Auto-generated — tap 🎲 to reroll or edit. A 4-letter code is also created.
+              </p>
+            )}
           </div>
         )}
 

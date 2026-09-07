@@ -135,7 +135,15 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Session storage              | `storage.test.ts`        | 9     | Persistence round-trip + host rehydrate    |
 | Storage rigorous             | `storage.rigorous.test.ts` | 10  | White+black: malformed/missing/overwrite/clear |
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
-| Room names rigorous          | `roomNames.rigorous.test.ts` | 7 | White+black: pick/slice/trim + fallback |
+| Room names rigorous          | `roomNames.rigorous.test.ts` | 10 | Telugu-cinema bank: exhaustive ≤32/meanings + dice spec |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
 | Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 10 | Reset keeps roster, last-leave deletes, rematch spec |
-| **Total**                    |                          | **210**|                                                   |
+| **Total**                    |                          | **213**|                                                   |
+
+## Polish — Telugu-Cinema Room Names with Meanings
+
+**Ask:** generic word banks ("Gully Groovers") weren't fun enough; base names on Telugu movies with a joke explained per roll.
+
+**Fix:** `src/lib/roomNames.ts` now holds 48 curated `ROOM_NAMES` entries (iconic titles + twists like "Ee Playlistki Emaindi", "SR Karaoke Mandapam", "DJ Tillu Tunes"), each with a `meaning`. New `generateRoomNameEntry()` / `getRoomNameMeaning()`; `src/components/game/EntryView.tsx` shows `💡 {meaning}` under the Room Name field (updates on 🎲 reroll, hides when hand-typed). All names ≤ 32 chars.
+
+**Tests:** `roomNames.rigorous.test.ts` rewritten (10 cases — exhaustive bank ≤32/meanings/uniqueness + dice spec). `213` total.
