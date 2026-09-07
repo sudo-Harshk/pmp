@@ -32,6 +32,8 @@ export default function App() {
     jukeboxSeek,
     setPlaybackPaused,
     leaveRoom,
+    playAgain,
+    endRoom,
   } = useRoom(roomCode ?? undefined, {
     onInvalidSession: () => {
       clearSession()
@@ -56,6 +58,16 @@ export default function App() {
   function handleLeave() {
     if (roomCode && myPlayerId) {
       void leaveRoom(roomCode, myPlayerId)
+    }
+    clearSession()
+    setRoomCode(null)
+  }
+
+  function handleEndRoom() {
+    if (roomCode) {
+      void endRoom(roomCode).catch(() => {
+        // listener null-routing already sends everyone home
+      })
     }
     clearSession()
     setRoomCode(null)
@@ -137,6 +149,8 @@ export default function App() {
             onSetPlaybackPaused={(paused: boolean) =>
               roomCode && setPlaybackPaused(roomCode, paused)
             }
+            onPlayAgain={() => roomCode && playAgain(roomCode)}
+            onEndRoom={handleEndRoom}
             onLeave={handleLeave}
           />
         )}
@@ -161,6 +175,8 @@ interface ContentProps {
   onJukeboxJump: (index: number) => void
   onJukeboxSeek: (seconds: number) => void
   onSetPlaybackPaused: (paused: boolean) => void
+  onPlayAgain: () => void
+  onEndRoom: () => void
   onLeave: () => void
 }
 
@@ -178,6 +194,8 @@ function Content({
   onJukeboxJump,
   onJukeboxSeek,
   onSetPlaybackPaused,
+  onPlayAgain,
+  onEndRoom,
   onLeave,
 }: ContentProps) {
   switch (room.status) {
@@ -229,7 +247,15 @@ function Content({
     case 'INTERMISSION':
       return <IntermissionView room={room} />
     case 'GAMEOVER':
-      return <LeaderboardView room={room} onLeave={onLeave} />
+      return (
+        <LeaderboardView
+          room={room}
+          isHost={isHost}
+          onPlayAgain={onPlayAgain}
+          onEndRoom={onEndRoom}
+          onLeave={onLeave}
+        />
+      )
     default:
       return null
   }

@@ -114,6 +114,14 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 - **Storage** — `src/lib/storage.rigorous.test.ts:1` 10 cases: missing/malformed/missing fields/extra ignored/overwrite/clear white + save-clear + independent sessions black
 - **Total rigorous added:** `+132` cases; grand total `200` across `11` suites, `0` failed, `typecheck`/`build` green
 
+## Phase 1 — Room Lifecycle (Play Again, End Room, Auto-Cleanup)
+
+**Bug:** Finished rooms locked forever at `GAMEOVER` (`Game over — ask the host to start a new room`); nothing ever deleted a room, so dead shells piled up in the DB and no rematch was possible without a new code.
+
+**Fix:** New `src/lib/roomLifecycle.ts:1` pure helpers — `resetPlayersForPlayAgain` (roster kept, scores zeroed), `removePlayer` (returns null when nobody remains), `buildPlayAgainReset` (LOBBY + cleared tracks/submissions/guesses/deltas/timers). `src/hooks/useRoom.ts` gains host-guarded `playAgain` (one transaction resets the same room — code/name/host/mode kept) and `endRoom` (removes the whole node); `leaveRoom` is now a transaction that returns `null` when the last player leaves so the room auto-deletes; the `onValue` listener sends everyone home (`clearSession` + invalid-session routing) when the node vanishes. `src/components/game/LeaderboardView.tsx` shows host `🔄 Play Again (same code)` + `End Room`, guests `Waiting for host to start a new game…`; wired in `src/App.tsx` (`handleEndRoom`).
+
+**Tests:** New `src/lib/roomLifecycle.rigorous.test.ts` (10 cases — reset keeps id/name, no mutation, last-leave null, unknown-id, full reset shape, rematch spec). `210` total.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
@@ -129,4 +137,5 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
 | Room names rigorous          | `roomNames.rigorous.test.ts` | 7 | White+black: pick/slice/trim + fallback |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
-| **Total**                    |                          | **200**|                                                   |
+| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 10 | Reset keeps roster, last-leave deletes, rematch spec |
+| **Total**                    |                          | **210**|                                                   |

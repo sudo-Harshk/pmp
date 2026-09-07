@@ -20,6 +20,7 @@ import {
   shuffleFisherYates,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
+import { buildPlayAgainReset, removePlayer } from '@/lib/roomLifecycle'
 import { clearSession, getSession } from '@/lib/storage'
 import type {
   GameMode,
@@ -127,6 +128,8 @@ export interface UseRoomResult {
   setPlaybackPaused: (roomCode: string, paused: boolean) => Promise<void>
   updateGameState: (roomCode: string, updates: Partial<RoomState>) => Promise<void>
   leaveRoom: (roomCode: string, playerId: string) => Promise<void>
+  playAgain: (roomCode: string) => Promise<void>
+  endRoom: (roomCode: string) => Promise<void>
 }
 
 interface UseRoomOptions {
@@ -160,6 +163,13 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     const unsubscribe = onValue(
       roomRefInstance,
       (snapshot: DataSnapshot) => {
+        // Room deleted (host End Room / last leave) — send everyone home
+        if (!snapshot.exists()) {
+          setRoom(null)
+          clearSession()
+          onInvalidSessionRef.current?.()
+          return
+        }
         setRoom(fromFirestoreRoom(snapshot.val(), roomCode))
       },
       (error: Error) => {
@@ -558,10 +568,41 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
   const leaveRoom = useCallback(
     async (code: string, playerId: string): Promise<void> => {
-      const playerRef = ref(db, `rooms/${code}/players/${playerId}`)
-      await remove(playerRef)
+      await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+        if (currentVal === null) return currentVal
+        const data = currentVal as Record<string, unknown>
+        const players = (data.players as Record<string, Player>) ?? {}
+        const next = removePlayer(players, playerId)
+        // Last player out deletes the whole room — no orphan shells in the DB
+        if (next === null) return null
+        return { ...data, players: next }
+      })
     },
     [],
+  )
+
+  const playAgain = useCallback(
+    async (code: string): Promise<void> => {
+      if (!room || room.hostId !== myPlayerId) return
+      const callerId = myPlayerId
+      await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
+        if (currentVal === null) return currentVal
+        const data = currentVal as Record<string, unknown>
+        if ((data.hostId as string) !== callerId) return currentVal
+        const players = (data.players as Record<string, Player>) ?? {}
+        // Same code/name/roster/host/mode — scores, playlist and timers zeroed
+        return { ...data, ...buildPlayAgainReset(players) }
+      })
+    },
+    [room, myPlayerId],
+  )
+
+  const endRoom = useCallback(
+    async (code: string): Promise<void> => {
+      if (!room || room.hostId !== myPlayerId) return
+      await remove(ref(db, `rooms/${code}`))
+    },
+    [room, myPlayerId],
   )
 
   // Absolute timestamp synchronization — host drives timer via roundStartTime delta
@@ -628,5 +669,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
     setPlaybackPaused,
     updateGameState,
     leaveRoom,
+    playAgain,
+    endRoom,
   }
 }

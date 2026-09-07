@@ -46,6 +46,7 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Room identity** — **fix:** `Room Name` is now separate from `Host Name` (auto-generated fun names with 🎲 reroll, editable, `≤32` chars; lobby + header show `🎬 {roomName} · {code}`, legacy rooms fall back to `Room {code}`)
 - **Concealed voting** — **fix:** dummy local vote + hide self (3 buttons in 4-player) — every screen indistinguishable
 - **Rejoin & toasts** — **fix:** mid-game join (except `GAMEOVER`), `onDisconnect` ghost cleanup, `🟢/🔴/👑` toasts, submission no longer soft-locks when someone is AFK, and **Skip Unplayable** is now consistent for everyone (`Anyone can skip` + anyone can tap during `PLAYING`)
+- **Phase 1 — Room lifecycle** — **fix:** host **🔄 Play Again** resets the same room to lobby (same code/roster, scores zeroed) so rematches need no new code; host **End Room** deletes the node and routes everyone home; last-player leave auto-deletes (no orphans)
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 
@@ -95,7 +96,8 @@ npm test
 - **Session storage** — `src/lib/storage.test.ts` (9) + `storage.rigorous.test.ts` (10) — malformed/missing/overwrite/clear
 - **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (7) — pick/slice/trim + fallback
 - **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
-- **Total: 200 tests across 11 suites (68 + 132 rigorous) — all white-box + black-box for every bug fix**
+- **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (10) — reset keeps roster, last-leave deletes, rematch spec
+- **Total: 210 tests across 12 suites — all white-box + black-box for every bug fix**
 
 ## Hosting
 

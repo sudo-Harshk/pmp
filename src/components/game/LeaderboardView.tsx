@@ -4,6 +4,9 @@ import type { RoomState } from '@/types/game'
 
 interface LeaderboardViewProps {
   room: RoomState
+  isHost: boolean
+  onPlayAgain: () => void
+  onEndRoom: () => void
   onLeave: () => void
 }
 
@@ -26,7 +29,13 @@ function fireConfetti(): void {
   )
 }
 
-export default function LeaderboardView({ room, onLeave }: LeaderboardViewProps) {
+export default function LeaderboardView({
+  room,
+  isHost,
+  onPlayAgain,
+  onEndRoom,
+  onLeave,
+}: LeaderboardViewProps) {
   const players = Object.values(room.players).sort(
     (a, b) => b.score - a.score || (b.bestRound ?? 0) - (a.bestRound ?? 0) || a.name.localeCompare(b.name),
   )
@@ -86,6 +95,29 @@ export default function LeaderboardView({ room, onLeave }: LeaderboardViewProps)
       {tracksPlayed > 0 && (
         <p className="rounded-lg bg-slate-800/60 px-3 py-2 text-center text-xs text-slate-400">
           {tracksPlayed} track{tracksPlayed === 1 ? '' : 's'} played
+        </p>
+      )}
+
+      {isHost ? (
+        <>
+          <button
+            type="button"
+            onClick={onPlayAgain}
+            className="w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400"
+          >
+            🔄 Play Again (same code)
+          </button>
+          <button
+            type="button"
+            onClick={onEndRoom}
+            className="w-full rounded-lg border border-rose-500/40 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
+          >
+            End Room
+          </button>
+        </>
+      ) : (
+        <p className="rounded-lg bg-slate-800/70 px-3 py-3 text-center text-sm text-slate-300">
+          Waiting for host to start a new game…
         </p>
       )}
 

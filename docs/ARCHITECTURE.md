@@ -43,10 +43,12 @@ sequenceDiagram
     H->>F: auto hostNext() → PLAYING
     H->>F: jukeboxJump(index) / jukeboxNavigate(PREV|NEXT) / setPlaybackPaused() / jukeboxSeek(seconds) (anyone in JUKEBOX)
     Note over C,F: Jukebox: anyone can Prev/Pause/Next/Seek/tap queue, all seekTo same second
-    C->>F: leaveRoom() → remove players/{id} + onDisconnect auto-remove on tab-close
+    C->>F: leaveRoom() → transaction removes players/{id}; last leave returns null → room auto-deleted
     Note over H,F: host failover: if hostId not in players, first remaining promoted
     F-->>H: onValue players diff → 🟢 joined / 🔴 left toast (Toasts.tsx, 4s)
     F-->>C: onValue players diff → 🟢 joined / 🔴 left + 👑 You are now host toast
+    H->>F: playAgain() [transaction → LOBBY, roster kept, scores zeroed] / endRoom() → remove node
+    Note over F: deleted node → all listeners route home (clearSession)
 ```
 
 Every client opens the URL, creates or joins a room, and then subscribes to a single Firebase node (`rooms/{roomCode}`) via the `onValue` listener. State changes (submissions, guesses, timer, status) are written by the acting client and **pushed to every other client live** — no polling, no server code.
@@ -70,11 +72,12 @@ graph TD
     LIB --> SC[scoring.ts<br/>calculateRoundScores<br/>live-submitter split, self-farm blocked]
      LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
      LIB --> RN[roomNames.ts<br/>generateRoomName - Indian pop-culture word banks, ≤32 chars]
+    LIB --> RL[roomLifecycle.ts<br/>resetPlayersForPlayAgain / removePlayer / buildPlayAgainReset]
     LIB --> ST[storage.ts<br/>localStorage session helpers]
     SRC --> UTIL[components/Toasts.tsx<br/>players diff → 🟢/🔴/👑 toasts, 4s auto-dismiss]
 
      SRC --> HOOKS[hooks/]
-    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>createRoom/joinRoom + onDisconnect + mid-game rejoin (blocked only at GAMEOVER)<br/>hostNext (shuffle host-only; PLAYING skip open to anyone) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker]
+    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>createRoom/joinRoom + onDisconnect + mid-game rejoin (blocked only at GAMEOVER)<br/>playAgain (host reset same room) / endRoom (host delete) / leaveRoom (last-leave auto-delete)<br/>hostNext (shuffle host-only; PLAYING skip open to anyone) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker + deleted-node home routing]
 
     SRC --> COMP[components/]
     COMP --> YTP[YouTubePlayer.tsx<br/>react-youtube wrapper<br/>seekTo/getCurrentTime/getDuration + onStateChange]
@@ -86,7 +89,7 @@ graph TD
     GAMEV --> JB[JukeboxView.tsx<br/>common shuffled queue + seek sync + seek bar + queue tap<br/>anyone Prev/Pause/Next/Seek/Skip + visible queue like Spotify]
     GAMEV --> IM[IntermissionView.tsx<br/>7s countdown banner]
     GAMEV --> REV[RevealView.tsx<br/>submitters + guesses + sit-out bonus]
-    GAMEV --> LEAD[LeaderboardView.tsx<br/>rankings + tiebreak score→bestRound→name + confetti]
+    GAMEV --> LEAD[LeaderboardView.tsx<br/>rankings + tiebreak + confetti + host Play Again/End Room]
 ```
 
 > Note: `src/components/{DedupPreview,RoomCard,SongSubmissionForm,PlayerStage}.tsx` are earlier-phase artifacts kept for reference; the live multiplayer flow uses the components under `src/components/game/`.
