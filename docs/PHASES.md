@@ -102,13 +102,31 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** `typecheck`/`68` tests/`build` green; no new suite (RTDB/toast logic is integration).
 
+## Tests — Rigorous White-Box + Black-Box for All Bug Fixes
+
+**Goal:** Prove every commercial bug fix with both branch (white-box) and spec (black-box) coverage, no regressions.
+
+- **Scoring** — `src/lib/scoring.rigorous.test.ts:1` 19 cases (10 white + 5 black + 4 helpers): ghost vote ignored, self-farm blocked, departed submitter pool discarded, single-live full pool (leakage regression), 2-live 3/2 remainder, 3-live 4/3/3, submitter double-dip blocked, departed guesser ignored, accumulation + `roundToInteger` 2-decimal, empty submitters, spec +10/+5 split, empty guesses
+- **YouTube** — `src/lib/youtube.rigorous.test.ts:1` 25 cases (13 white + 12 black): watch/`&list`/`&index`/`?t=`, `youtu.be` `?t`/`?list`, embed, shorts, http/no-www, boundary guard 12-char reject, non-string, first-pattern priority, dedup across 4 forms, `?t`/`&list` stripped dedup
+- **Player logic** — `src/lib/playerLogic.rigorous.test.ts:1` 27 cases: `START/PAUSE/TICK` (!running same-ref, >0 decrement, ≤0 clamp), `RESET` custom/default, default unknown, `getPrevious/Next` boundaries, `navigateJukebox` empty/out-of-bounds/PREV/NEXT/finished, `shuffleFisherYates` crypto/`Math.random` fallback/rejection-sampling retry (forced `0xffffffff` > limit), immutability/permutation, spec 30/7/180
+- **Bugfixes** — `src/lib/bugfixes.rigorous.test.ts:1` 44 cases: `getVoteCandidates` (null/self/empty/N-1), `shouldShowSkip` (null/100/101/150/other), `canJoinRoom` (5 allowed + GAMEOVER blocked + unknown), `getNewHostId` (keep/first/empty), `diffPlayers` (null/ join/leave/ join+leave/ no-diff), `canHostStart` (0/>0), `canHostNext` (PLAYING open vs SUBMISSION/REVEAL host-only), `normalizeRoomName` (trim/fallback/32-char), plus black-box concealed voting / rejoin / skip / roomName specs
+- **Room names** — `src/lib/roomNames.rigorous.test.ts:1` 7 cases: pick/slice/trim/non-empty white + variety/fallback black
+- **Storage** — `src/lib/storage.rigorous.test.ts:1` 10 cases: missing/malformed/missing fields/extra ignored/overwrite/clear white + save-clear + independent sessions black
+- **Total rigorous added:** `+132` cases; grand total `200` across `11` suites, `0` failed, `typecheck`/`build` green
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
 | ---------------------------- | ------------------------ | ----- | -------------------------------------------------- |
 | YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup |
+| YouTube rigorous             | `youtube.rigorous.test.ts` | 25  | White+black: 4 patterns + boundary + dedup + stripping |
 | Scoring                      | `scoring.test.ts`        | 10    | Guess points + submitter bonus (live split, self-farm blocked) |
-| Player logic (timer + nav + shuffle) | `playerLogic.test.ts`    | 26    | Countdown, track boundaries, intermission/jukebox, shuffle |
+| Scoring rigorous             | `scoring.rigorous.test.ts` | 19  | White+black: ghost/self-farm/leakage/remainder/rounding |
+| Player logic (timer+nav+shuffle) | `playerLogic.test.ts` | 26  | Countdown, boundaries, intermission/jukebox, shuffle |
+| Player logic rigorous        | `playerLogic.rigorous.test.ts` | 27 | White+black: reducer/branches/navigate/shuffle + crypto fallback/retry |
 | Session storage              | `storage.test.ts`        | 9     | Persistence round-trip + host rehydrate    |
+| Storage rigorous             | `storage.rigorous.test.ts` | 10  | White+black: malformed/missing/overwrite/clear |
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
-| **Total**                    |                          | **68**|                                                    |
+| Room names rigorous          | `roomNames.rigorous.test.ts` | 7 | White+black: pick/slice/trim + fallback |
+| Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
+| **Total**                    |                          | **200**|                                                   |

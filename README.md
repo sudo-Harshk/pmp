@@ -89,11 +89,13 @@ Everything lives in [`docs/`](./docs/):
 npm test
 ```
 
-- **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19 cases)
-- **Scoring** — `src/lib/scoring.test.ts` (10 cases)
-- **Player logic / timer + shuffle + intermission/jukebox** — `src/lib/playerLogic.test.ts` (26 cases)
-- **Session storage** — `src/lib/storage.test.ts` (9 cases)
-- **Room names** — `src/lib/roomNames.test.ts` (4 cases, format/length/variety)
+- **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19) + `youtube.rigorous.test.ts` (25) — patterns, boundary, `?t`/`&list` dedup
+- **Scoring** — `src/lib/scoring.test.ts` (10) + `scoring.rigorous.test.ts` (19) — ghost/self-farm/leakage/remainder/rounding
+- **Player logic / timer + shuffle + intermission/jukebox** — `src/lib/playerLogic.test.ts` (26) + `playerLogic.rigorous.test.ts` (27) — reducer branches, navigate, shuffle crypto/fallback/retry
+- **Session storage** — `src/lib/storage.test.ts` (9) + `storage.rigorous.test.ts` (10) — malformed/missing/overwrite/clear
+- **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (7) — pick/slice/trim + fallback
+- **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
+- **Total: 200 tests across 11 suites (68 + 132 rigorous) — all white-box + black-box for every bug fix**
 
 ## Hosting
 
