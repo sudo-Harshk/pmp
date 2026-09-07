@@ -161,13 +161,15 @@ export default function JukeboxView({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onNavigate({ type: 'NEXT' })}
-          className="mt-3 w-full rounded-lg border border-amber-500/40 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/10"
-        >
-          Skip Unplayable Track
-        </button>
+        {playerError !== null && [100, 101, 150].includes(playerError) && (
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'NEXT' })}
+            className="mt-3 w-full rounded-lg border border-amber-500/40 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-500/10"
+          >
+            Skip Unplayable Track
+          </button>
+        )}
 
         {/* Seek bar — anyone can seek, like Spotify */}
         <div className="mt-5">

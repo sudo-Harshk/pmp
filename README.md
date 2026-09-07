@@ -48,6 +48,7 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Rejoin & toasts** — **fix:** mid-game join (except `GAMEOVER`), `onDisconnect` ghost cleanup, `🟢/🔴/👑` toasts, submission no longer soft-locks when someone is AFK, and **Skip Unplayable** is now consistent for everyone (`Anyone can skip` + anyone can tap during `PLAYING`)
 - **Phase 1 — Room lifecycle** — **fix:** host **🔄 Play Again** resets the same room to lobby (same code/roster, scores zeroed) so rematches need no new code; host **End Room** deletes the node and routes everyone home; last-player leave auto-deletes (no orphans)
 - **Phase 2 — Duplicate names** — **fix:** join rejects taken names (`Name already taken in this room`, case-insensitive) so two "Alice"s can never split votes or steal bonuses
+- **Phase 3 — Jukebox skip consistency** — **fix:** Jukebox `Skip Unplayable Track` now shows only on `101/150/100` errors, exactly like Guessing mode — same banner, same button, everyone, same time
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 

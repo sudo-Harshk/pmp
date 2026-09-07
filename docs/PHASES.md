@@ -130,6 +130,14 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** +8 cases in `roomLifecycle.rigorous.test.ts` (exact/case/whitespace/blank/empty/messy white + duplicate spec black). `221` total.
 
+## Phase 3 — Jukebox Skip Consistency
+
+**Bug:** `JukeboxView.tsx:164` rendered `Skip Unplayable Track` always, while `GameView.tsx:125` shows it only on `101/150/100` errors — same banner, different button rules per mode.
+
+**Fix:** Jukebox skip button now gated on `playerError !== null && [100, 101, 150].includes(playerError)`, exactly like GameView. Both modes: identical amber `Anyone can skip` banner + identical button, visible to everyone at the same time, only on unplayable errors.
+
+**Tests:** No new suite (one-condition JSX change; the `shouldShowSkip` branches are already covered in `bugfixes.rigorous.test.ts`). `221` total unchanged.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
