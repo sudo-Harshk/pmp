@@ -38,8 +38,8 @@ export default function App() {
     },
   })
 
-  async function handleCreateRoom(hostName: string) {
-    const result = await createRoom(hostName)
+  async function handleCreateRoom(hostName: string, roomName: string) {
+    const result = await createRoom(hostName, roomName)
     saveSession(result.roomCode, result.playerId)
     setRoomCode(result.roomCode)
     return result
@@ -78,15 +78,27 @@ export default function App() {
         <h1 className="text-xl font-extrabold tracking-tight text-white">
           Play My <span className="text-indigo-400">Playlist</span>
         </h1>
-        {inRoom && (
-          <button
-            type="button"
-            onClick={handleLeave}
-            className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-rose-500 hover:text-rose-300"
-          >
-            Leave Room
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {inRoom && room && (
+            <span className="hidden max-w-[12rem] truncate rounded-full bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-200 sm:inline">
+              🎬 {room.roomName} · {room.roomCode}
+            </span>
+          )}
+          {inRoom && room && (
+            <span className="rounded-full bg-slate-800 px-2 py-1 font-mono text-[11px] tracking-widest text-slate-300 sm:hidden">
+              {room.roomCode}
+            </span>
+          )}
+          {inRoom && (
+            <button
+              type="button"
+              onClick={handleLeave}
+              className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-rose-500 hover:text-rose-300"
+            >
+              Leave Room
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center">

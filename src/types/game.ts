@@ -44,6 +44,7 @@ export interface ScoreDelta {
 
 export interface RoomState {
   roomCode: string
+  roomName: string
   status: RoomStatus
   hostId: string
   mode: GameMode

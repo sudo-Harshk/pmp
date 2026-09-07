@@ -6,7 +6,7 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 
 ## Highlights
 
-- **Real-time multiplayer** — rooms, live submissions, voting, and a host-managed game loop synced over Firebase Realtime Database.
+- **Real-time multiplayer** — rooms with auto-generated fun names (`Gully Groovers`, `Masala Beats` — tap 🎲 to reroll), live submissions, voting, and a host-managed loop synced over Firebase RTDB.
 - **Two play modes** — host picks in the lobby: **Guessing Game** (30 s snippet + voting + reveal + 7 s intermission) or **Casual Jukebox** (common shuffled playlist, full playback up to 3 min, Spotify-like jam).
 - **Shuffled playlist** — Fisher–Yates shuffle (open-source, `crypto.getRandomValues` → `Math.random` fallback) once at game start so order is never straight; deduped tracks never leak submitter order.
 - **Watch-party sync** — absolute `roundStartTime` + server-clock correction + `seekTo` drift fix (everyone hears the same second, even late join).
@@ -41,7 +41,8 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Phase 3** — Firebase sync, real-time game loop, voting & scoring
 - **Phase 4** — Session persistence, confetti, audio-only mode, Vercel config
 - **Refinements** — 7 s intermission, vote lock-in, jukebox mode
-- **Hardening & Jam** — shuffled Fisher–Yates playlist, vote-independence + sit-out-but-listen (no self-vote cheating), absolute `roundStartTime` + `seekTo` watch-party sync, host failover, YouTube `101/150/100` skip, scoring leakage / double-reveal / invisible-bonus fixes, Jukebox common queue (anyone can `Prev/Pause/Next/Seek/tap`, visible queue, like Spotify)
+- **Hardening & Jam** — shuffled Fisher–Yates playlist, vote-independence + sit-out-but-listen, absolute `roundStartTime` + `seekTo` sync, host failover, YouTube skip, scoring fixes, Jukebox common queue (anyone controls)
+- **Room identity** — **fix:** `Room Name` is now separate from `Host Name` (auto-generated fun names with 🎲 reroll, editable, `≤32` chars; lobby + header show `🎬 {roomName} · {code}`, legacy rooms fall back to `Room {code}`)
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 
@@ -85,10 +86,11 @@ Everything lives in [`docs/`](./docs/):
 npm test
 ```
 
-- **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19 cases, including `?t=`/`&list=` stripping)
-- **Scoring** — `src/lib/scoring.test.ts` (10 cases, live-submitter split, self-farm blocked)
-- **Player logic / timer + shuffle + intermission/jukebox** — `src/lib/playerLogic.test.ts` (26 cases, including Fisher–Yates shuffle)
+- **YouTube parsing & dedup** — `src/lib/youtube.test.ts` (19 cases)
+- **Scoring** — `src/lib/scoring.test.ts` (10 cases)
+- **Player logic / timer + shuffle + intermission/jukebox** — `src/lib/playerLogic.test.ts` (26 cases)
 - **Session storage** — `src/lib/storage.test.ts` (9 cases)
+- **Room names** — `src/lib/roomNames.test.ts` (4 cases, format/length/variety)
 
 ## Hosting
 

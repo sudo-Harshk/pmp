@@ -78,12 +78,21 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 - **Jukebox common queue (Spotify-like jam)** — Modified, not new: `src/components/game/JukeboxView.tsx` now shows shuffled `tracks` as a tap-to-jump queue below the player, seek bar (`range` → `jukeboxSeek`), and `Prev/Pause/Next/Skip` are **anyone-can** (host guard removed from `jukeboxNavigate`/`setPlaybackPaused` + new `jukeboxJump`/`jukeboxSeek` in `src/hooks/useRoom.ts:431` + `App.tsx` `serverOffset` plumbing). All still share one `currentTrackIndex` + `roundStartTime` so everyone hears the same second like a jam. `YouTubePlayer` `key={videoId}` remount + `onReady` seek handles late join.
 - **Tests:** `playerLogic.test.ts` now 26 cases (was 22, +4 shuffle). Total `64` (was 60).
 
+## Fix — Room Name vs Host Name
+
+**Bug:** Create form had only "Your Name"; the value was stored as the host player's name, so typing "abc" looked like "the room name became abc" (lobby showed "abc" as Host).
+
+**Fix:** `RoomState` now has `roomName: string` (`src/types/game.ts:47`) distinct from the host's player name. New `src/lib/roomNames.ts:16` auto-generates fun Indian pop-culture names ("Gully Groovers", "Masala Beats", …) from word banks, `≤32` chars — host need not think. `src/components/game/EntryView.tsx:5` in Create mode shows **Your Name** (identity) + prefilled **Room Name** with 🎲 reroll (editable); `createRoom(hostName, roomName)` (`src/hooks/useRoom.ts:190`) stores it. `LobbyView.tsx:26` header shows `🎬 {roomName}` above the code; `App.tsx:77` header chip shows `🎬 {roomName} · {code}` while in a room; `fromFirestoreRoom` falls back to `Room {code}` for legacy rooms without `roomName`. No Firebase rules change needed. Names still WIP (to be polished later).
+
+**Tests:** New `src/lib/roomNames.test.ts` (4 cases — format, length cap, trimmed, variety). `68` total.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
 | ---------------------------- | ------------------------ | ----- | -------------------------------------------------- |
-| YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup (watch/youtu.be/shorts + ?t/&list) |
+| YouTube                      | `youtube.test.ts`        | 19    | ID extraction + dedup |
 | Scoring                      | `scoring.test.ts`        | 10    | Guess points + submitter bonus (live split, self-farm blocked) |
-| Player logic (timer + nav + shuffle) | `playerLogic.test.ts`    | 26    | Countdown, track boundaries, intermission/jukebox, Fisher–Yates shuffle |
-| Session storage              | `storage.test.ts`        | 9     | Persistence round-trip (jsdom) + host rehydrate    |
-| **Total**                    |                          | **64**|                                                    |
+| Player logic (timer + nav + shuffle) | `playerLogic.test.ts`    | 26    | Countdown, track boundaries, intermission/jukebox, shuffle |
+| Session storage              | `storage.test.ts`        | 9     | Persistence round-trip + host rehydrate    |
+| Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
+| **Total**                    |                          | **68**|                                                    |

@@ -35,6 +35,7 @@ The app (see `useRoom` in `src/hooks/useRoom.ts`) writes to these paths:
 
 ```
 rooms/{roomCode}
+├── roomName: string          # e.g. "Gully Groovers" — auto-generated (≤32 chars), separate from host player name
 ├── status: string            # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
 ├── mode: string              # GUESSING | JUKEBOX (default GUESSING; picked in LOBBY via setMode)
 ├── hostId: string            # auto-failover to first remaining if host leaves

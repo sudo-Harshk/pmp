@@ -83,6 +83,10 @@ function fromFirestoreRoom(value: unknown | null, roomCode: string): RoomState |
 
   return {
     roomCode,
+    roomName:
+      typeof data.roomName === 'string' && data.roomName.trim().length > 0
+        ? data.roomName.trim().slice(0, 32)
+        : `Room ${roomCode}`,
     status: (data.status as RoomState['status']) ?? 'LOBBY',
     hostId: (data.hostId as string) ?? '',
     mode: (data.mode as GameMode) ?? 'GUESSING',
@@ -105,7 +109,7 @@ export interface UseRoomResult {
   myPlayerId: string | null
   isHost: boolean
   serverOffset: number
-  createRoom: (hostName: string) => Promise<{ roomCode: string; playerId: string }>
+  createRoom: (hostName: string, roomName: string) => Promise<{ roomCode: string; playerId: string }>
   joinRoom: (roomCode: string, playerName: string) => Promise<string>
   submitSongs: (roomCode: string, playerId: string, youtubeUrls: string[]) => Promise<void>
   submitGuess: (roomCode: string, playerId: string, guessedName: string) => Promise<void>
@@ -187,7 +191,7 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
   }, [room?.hostId, room?.players])
 
   const createRoom = useCallback(
-    async (hostName: string): Promise<{ roomCode: string; playerId: string }> => {
+    async (hostName: string, roomName: string): Promise<{ roomCode: string; playerId: string }> => {
       let code = generateRoomCode()
       let exists = (await get(ref(db, `rooms/${code}`))).exists()
       while (exists) {
@@ -197,8 +201,10 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
       const hostId = generateId()
       const createdAt = Date.now()
+      const safeRoomName = roomName.trim().slice(0, 32) || `Room ${code}`
       const roomState: RoomState = {
         roomCode: code,
+        roomName: safeRoomName,
         status: 'LOBBY',
         hostId,
         mode: 'GUESSING',

@@ -22,7 +22,8 @@ export default function LobbyView({
   return (
     <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900/60 p-6 shadow-xl">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Room</h2>
+        <p className="text-sm font-semibold tracking-wide text-amber-300">🎬 {room.roomName}</p>
+        <h2 className="mt-1 text-2xl font-bold text-white">Room</h2>
         <p className="mt-1 font-mono text-4xl font-extrabold tracking-[0.3em] text-indigo-300">
           {room.roomCode}
         </p>

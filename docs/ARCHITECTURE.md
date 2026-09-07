@@ -20,9 +20,9 @@ sequenceDiagram
     participant C as Client(s)
     participant F as Firebase RTDB
 
-    H->>F: createRoom(code) / joinRoom()
+    H->>F: createRoom(hostName, roomName) / joinRoom()
     C->>F: joinRoom()
-    Note over F: rooms/{code} created
+    Note over F: rooms/{code} created with roomName (e.g. Gully Groovers)
     H->>F: setMode(GUESSING|JUKEBOX)
     H->>F: startSubmission()
     F-->>H: onValue(rooms/{code}) → new status
@@ -66,17 +66,18 @@ graph TD
     LIB --> FB[firebase.ts<br/>app + db init]
     LIB --> YT[youtube.ts<br/>extractVideoId / processSubmissions<br/>handles watch/youtu.be/shorts + ?t &list stripping]
     LIB --> SC[scoring.ts<br/>calculateRoundScores<br/>live-submitter split, self-farm blocked]
-    LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
+     LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
+    LIB --> RN[roomNames.ts<br/>generateRoomName - Indian pop-culture word banks, ≤32 chars]
     LIB --> ST[storage.ts<br/>localStorage session helpers]
 
     SRC --> HOOKS[hooks/]
-    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>hostNext (shuffle) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker]
+    HOOKS --> UR[useRoom.ts<br/>real-time room hook + all writes<br/>createRoom(hostName, roomName) + roomName fallback<br/>hostNext (shuffle) / hostReveal (status guard)<br/>jukeboxNavigate/jukeboxJump/jukeboxSeek/ setPlaybackPaused (anyone)<br/>roundStartTime + serverOffset sync + host failover ticker]
 
     SRC --> COMP[components/]
     COMP --> YTP[YouTubePlayer.tsx<br/>react-youtube wrapper<br/>seekTo/getCurrentTime/getDuration + onStateChange]
     COMP --> GAMEV[game/]
-    GAMEV --> ENTRY[EntryView.tsx<br/>Create / Join]
-    GAMEV --> LOBBY[LobbyView.tsx<br/>room code + roster + mode toggle]
+    GAMEV --> ENTRY[EntryView.tsx<br/>Create (Your Name + auto Room Name + 🎲 reroll) / Join]
+    GAMEV --> LOBBY[LobbyView.tsx<br/>🎬 roomName + room code + roster + mode toggle]
     GAMEV --> SUB[SubmissionView.tsx<br/>song form + readiness + Start Game/Playback]
     GAMEV --> GV[GameView.tsx<br/>player + absolute 30s timer + vote lock-in + sit-out-but-listen + audio-only + Skip Unplayable]
     GAMEV --> JB[JukeboxView.tsx<br/>common shuffled queue + seek sync + seek bar + queue tap<br/>anyone Prev/Pause/Next/Seek/Skip + visible queue like Spotify]
@@ -115,6 +116,7 @@ Rooms are stored flat under `rooms/{roomCode}` where `roomCode` is a 4-letter co
 ```
 rooms/{roomCode}
 ├── roomCode: string        # "ABCD"
+├── roomName: string        # e.g. "Gully Groovers" — auto-generated (Indian pop-culture), ≤32 chars, editable with 🎲 reroll; host name is separate
 ├── status: string          # LOBBY | SUBMISSION | PLAYING | REVEAL | INTERMISSION | GAMEOVER
 ├── mode: string            # GUESSING | JUKEBOX (default GUESSING)
 ├── hostId: string          # player id of the host (auto-failover to first remaining if host leaves)
@@ -143,7 +145,7 @@ A player's identity is stored in `localStorage` under `play_my_playlist_session`
 
 ## Testing
 
-- **Vitest** with four pure-logic suites run under jsdom — `youtube`, `scoring`, `playerLogic` (timer + `navigateJukebox` + `shuffleFisherYates` + duration constants), and `storage`.
-- Logic that touches Firebase (`useRoom`) is intentionally kept thin; the testable rules (dedupe, scoring, timer, shuffle, intermission/jukebox navigation, roundStartTime drift, sit-out, session) live in pure modules under `src/lib/`. `playerLogic.test.ts` now covers `INTERMISSION_DURATION_SECONDS (7)`, `JUKEBOX_MAX_SECONDS (180)`, `navigateJukebox()` (NEXT/PREV, clamping, single-track, empty, out-of-bounds), and `shuffleFisherYates` (preserves elements, immutability, empty/single, statistical order change).
-- `GameView` enforces single-vote lock-in locally (`voteLocked` + `isSubmitter` sit-out: owners hear but see *“This is your song — sit out”* banner, not voting buttons) so votes cannot be changed/cleared and no global `isTaken` steal; scoring guards (`!players[id] continue`, self-farm blocked, pool split only among live submitters) and `hostReveal` `status===PLAYING` guard prevent double-scoring.
-- Run everything with `npm test` (64 tests).
+- **Vitest** with five pure-logic suites run under jsdom — `youtube`, `scoring`, `playerLogic` (timer + `navigateJukebox` + `shuffleFisherYates` + duration constants), `storage`, and `roomNames`.
+- Logic that touches Firebase (`useRoom`) is intentionally kept thin; the testable rules (dedupe, scoring, timer, shuffle, intermission/jukebox navigation, roundStartTime drift, sit-out, session, room-name generation) live in pure modules under `src/lib/`. `playerLogic.test.ts` covers `INTERMISSION_DURATION_SECONDS (7)`, `JUKEBOX_MAX_SECONDS (180)`, `navigateJukebox()`, and `shuffleFisherYates`; `roomNames.test.ts` covers `generateRoomName()` format/length/variety.
+- `GameView` enforces single-vote lock-in locally (`voteLocked` + `isSubmitter` sit-out) so votes cannot be changed/cleared and no global `isTaken` steal; scoring guards and `hostReveal` `status===PLAYING` guard prevent double-scoring. `EntryView` keeps `Your Name` (host identity) and `Room Name` (auto-generated, rerollable) strictly separate.
+- Run everything with `npm test` (68 tests).

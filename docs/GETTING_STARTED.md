@@ -64,8 +64,8 @@ Open the printed URL (default `http://localhost:5173`). To test real-time multip
 
 ## Playing a Round
 
-1. **Create Room** (host) or **Join Room** (clients) with a name.
-2. In the lobby, the host picks the play mode: **Guessing Game** (default) or **Casual Jukebox** (toggle `Mode: Guessing Game | Casual Jukebox`). The shuffled Fisher–Yates playlist is built once at game start so order is never straight.
+1. **Create Room** — host enters **Your Name** (identity) and a **Room Name** (auto-generated fun name like "Gully Groovers" — tap 🎲 to reroll or edit; ≤32 chars) — the two are never confused. **Join Room** — guest enters **Your Name** + the 4-letter **Room Code**.
+2. In the lobby, the host sees `🎬 {Room Name}` above the code; everyone sees `🎬 {name} · {code}` in the header. Host picks the play mode: **Guessing Game** (default) or **Casual Jukebox**. The shuffled Fisher–Yates playlist is built once at game start so order is never straight.
 3. Host presses **Start Submission**; everyone submits N YouTube links (deduped, `?t=`/`&list=` stripped).
 4. Once everyone is ready, the host sees **Start Game** (Guessing) / **Start Playback** (Jukebox); others see *Waiting for host...*.
 5. **Guessing Game:** A 30-second snippet plays **synced** (`roundStartTime` + server clock + `seekTo` drift fix, everyone hears same second). Owners of the current track **hear it with friends but sit out voting** (*“This is your song — sit out”* banner, no vote buttons) and earn submitter bonus if others miss; others vote independently (no global `isTaken` steal) and `Vote Locked ✅` locks immediately. If the video is `101/150/100` unplayable, a host **Skip Unplayable Track** appears (`console.warn`). After **Reveal** (now shows sit-out bonuses `sat out — your track ★ +5`), a 7-second **Intermission** banner (`Next track starting in X seconds...`) auto-advances. Double reveal is blocked.
