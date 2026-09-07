@@ -100,7 +100,8 @@ npm test
 - **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (10) — 48 Telugu-cinema names with meanings, exhaustive ≤32
 - **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
 - **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (18) — reset keeps roster, last-leave deletes, rematch + duplicate-name spec
-- **Total: 221 tests across 12 suites — all white-box + black-box for every bug fix**
+- **Build marker** — `version.rigorous.test.ts` (5) — footer label branches
+- **Total: 226 tests across 13 suites — all white-box + black-box for every bug fix**
 
 ## Hosting
 

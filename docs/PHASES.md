@@ -158,7 +158,16 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Room names rigorous          | `roomNames.rigorous.test.ts` | 10 | Telugu-cinema bank: exhaustive ≤32/meanings + dice spec |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
 | Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 18 | Reset keeps roster, last-leave deletes, rematch + duplicate-name spec |
-| **Total**                    |                          | **221**|                                                   |
+| Build marker                 | `version.rigorous.test.ts` | 5 | Missing/blank/40-char/short/custom label branches |
+| **Total**                    |                          | **226**|                                                   |
+
+## Ops — Deployment Currency Litmus + Footer Build Marker
+
+**Problem:** Phantom "shuffle not working" report traced to a stale Vercel build (grouped playback = pre-shuffle code); no in-app way to tell which build is live.
+
+**Fix:** New `src/lib/version.ts` (`APP_BUILD` from `VITE_APP_VERSION`, `getBuildLabel` truncates 40-char hashes to 7, caps custom labels at 32, falls back to `dev`); `src/App.tsx` footer shows `pmp · build {label}`; `src/vite-env.d.ts` types the optional var. `docs/DEPLOYMENT.md` gains an "Is the Live Site Current?" litmus (footer marker → feature spot-check → dashboard commit compare → redeploy; one-time Build Command `VITE_APP_VERSION=$VERCEL_GIT_COMMIT_SHA npm run build` so the footer stamps real hashes).
+
+**Tests:** New `src/lib/version.rigorous.test.ts` (5 cases). `226` total.
 
 ## Polish — Telugu-Cinema Room Names with Meanings
 

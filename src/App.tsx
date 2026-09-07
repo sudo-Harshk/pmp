@@ -10,6 +10,7 @@ import IntermissionView from '@/components/game/IntermissionView'
 import RevealView from '@/components/game/RevealView'
 import LeaderboardView from '@/components/game/LeaderboardView'
 import Toasts from '@/components/Toasts'
+import { APP_BUILD, getBuildLabel } from '@/lib/version'
 import type { GameMode, RoomState } from '@/types/game'
 
 export default function App() {
@@ -155,6 +156,10 @@ export default function App() {
           />
         )}
       </main>
+
+      <footer className="mt-6 text-center text-[11px] text-slate-600">
+        pmp · build {getBuildLabel(APP_BUILD)}
+      </footer>
 
       {inRoom && <Toasts room={room} myPlayerId={myPlayerId} />}
     </div>

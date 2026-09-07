@@ -61,3 +61,24 @@ npm run build       # clean dist/ output
 ```
 
 A successful `npm run build` produces `dist/` — the exact folder Vercel serves.
+
+## Is the Live Site Current? (currency litmus)
+
+Stale deployments cause phantom "bugs" (e.g. grouped playback order = a build predating the shuffle fix). Check in this order:
+
+1. **Footer marker (2 seconds):** every page footer shows `pmp · build {hash|dev}`. Compare it with the latest commit on `origin/main` (`git log --oneline -1`). `dev` or an old hash → stale.
+2. **Feature spot-check (30 seconds):** create a room — is there a 🎲 Room Name field? Finish a game — is there 🔄 Play Again? Missing → stale.
+3. **Dashboard (1 minute):** Vercel → Project → Deployments → compare the production deployment's commit with `origin/main`. Behind → **Redeploy** (⋯ → Redeploy, or push — auto-deploy only works if the GitHub integration is connected to `main`).
+4. **Build failures:** if Redeploy fails, open the build log. The usual culprit is missing `VITE_FIREBASE_*` env vars in **Settings → Environment Variables** (localhost reads `.env.local`; Vercel never sees that file).
+
+### Stamping the build hash (recommended, one-time)
+
+So the footer shows a real commit hash instead of `dev`:
+
+1. Vercel → Project → **Settings → General → Build & Development Settings** → override **Build Command** with:
+   ```bash
+   VITE_APP_VERSION=$VERCEL_GIT_COMMIT_SHA npm run build
+   ```
+2. Redeploy. The footer then reads `pmp · build ca9a96d` (truncated to 7 chars).
+
+Locally the footer reads `pmp · build dev` unless you run `VITE_APP_VERSION=$(git rev-parse HEAD) npm run dev`. `VITE_APP_VERSION` is optional and typed in `src/vite-env.d.ts`; `getBuildLabel` (`src/lib/version.ts`) handles missing/blank/40-char values.
