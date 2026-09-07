@@ -35,6 +35,13 @@ export interface PlayAgainReset {
   players: Record<string, Player>
 }
 
+/** True when the name is already taken (trimmed, case-insensitive). */
+export function isNameTaken(players: Record<string, Player>, name: string): boolean {
+  const wanted = name.trim().toLowerCase()
+  if (wanted.length === 0) return false
+  return Object.values(players).some((p) => p.name.trim().toLowerCase() === wanted)
+}
+
 /** Field reset applied by host Play Again — preserves code/name/host/mode. */
 export function buildPlayAgainReset(players: Record<string, Player>): PlayAgainReset {
   return {

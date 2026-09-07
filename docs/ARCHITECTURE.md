@@ -21,7 +21,7 @@ sequenceDiagram
     participant F as Firebase RTDB
 
     H->>F: createRoom(hostName, roomName) / joinRoom() + onDisconnect(players/{id}).remove()
-    C->>F: joinRoom() allowed in LOBBY/SUBMISSION/PLAYING/REVEAL/INTERMISSION (blocked only at GAMEOVER)
+    C->>F: joinRoom() allowed in LOBBY/SUBMISSION/PLAYING/REVEAL/INTERMISSION (blocked only at GAMEOVER; duplicate names rejected via isNameTaken)
     Note over F: rooms/{code} created with roomName (e.g. Gully Groovers)
     H->>F: setMode(GUESSING|JUKEBOX)
     H->>F: startSubmission()
@@ -72,7 +72,7 @@ graph TD
     LIB --> SC[scoring.ts<br/>calculateRoundScores<br/>live-submitter split, self-farm blocked]
      LIB --> PL[playerLogic.ts<br/>snippetReducer + track nav<br/>INTERMISSION 7s + JUKEBOX 180s + navigateJukebox<br/>shuffleFisherYates via crypto.getRandomValues]
      LIB --> RN[roomNames.ts<br/>generateRoomName - Indian pop-culture word banks, ≤32 chars]
-    LIB --> RL[roomLifecycle.ts<br/>resetPlayersForPlayAgain / removePlayer / buildPlayAgainReset]
+    LIB --> RL[roomLifecycle.ts<br/>resetPlayersForPlayAgain / removePlayer / buildPlayAgainReset / isNameTaken]
     LIB --> ST[storage.ts<br/>localStorage session helpers]
     SRC --> UTIL[components/Toasts.tsx<br/>players diff → 🟢/🔴/👑 toasts, 4s auto-dismiss]
 

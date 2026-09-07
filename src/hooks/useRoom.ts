@@ -20,7 +20,7 @@ import {
   shuffleFisherYates,
   SNIPPET_DURATION_SECONDS,
 } from '@/lib/playerLogic'
-import { buildPlayAgainReset, removePlayer } from '@/lib/roomLifecycle'
+import { buildPlayAgainReset, isNameTaken, removePlayer } from '@/lib/roomLifecycle'
 import { clearSession, getSession } from '@/lib/storage'
 import type {
   GameMode,
@@ -250,6 +250,9 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       }
       if (current.status === 'GAMEOVER') {
         throw new Error('Game over — ask the host to start a new room')
+      }
+      if (isNameTaken(current.players, playerName)) {
+        throw new Error('Name already taken in this room')
       }
       const player: Player = {
         id: playerId,

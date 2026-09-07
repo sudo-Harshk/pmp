@@ -64,7 +64,7 @@ Open the printed URL (default `http://localhost:5173`). To test real-time multip
 
 ## Playing a Round
 
-1. **Create Room** — host enters **Your Name** (identity) and a **Room Name** (auto-generated fun name like "Gully Groovers" — tap 🎲 to reroll or edit; ≤32 chars) — the two are never confused. **Join Room** — guest enters **Your Name** + the 4-letter **Room Code**.
+1. **Create Room** — host enters **Your Name** (identity) and a **Room Name** (auto-generated fun name like "Pokiri Playlist" — tap 🎲 to reroll or edit; ≤32 chars; 💡 shows the movie joke) — the two are never confused. **Join Room** — guest enters a unique **Your Name** (taken names rejected: `Name already taken in this room`, case-insensitive) + the 4-letter **Room Code**.
 2. In the lobby, the host sees `🎬 {Room Name}` above the code; everyone sees `🎬 {name} · {code}` in the header. Host picks the play mode: **Guessing Game** (default) or **Casual Jukebox**. The shuffled Fisher–Yates playlist is built once at game start so order is never straight.
 3. Host presses **Start Submission**; everyone submits N YouTube links (deduped, `?t=`/`&list=` stripped). The host can press **Start Game/Playback** as soon as `tracks.length>0` — not blocked if someone is AFK. Anyone can join with the 4-letter code even after the game started (`SUBMISSION`/`PLAYING`/`REVEAL`/`INTERMISSION`); only `GAMEOVER` blocks (`Game over — ask the host to start a new room`). Leaving players trigger `🔴 {name} left` toasts; joining triggers `🟢 {name} joined`; tab-close is auto-cleaned via `onDisconnect`.
 4. Once everyone is ready, the host sees **Start Game** (Guessing) / **Start Playback** (Jukebox) as soon as any track exists; others see *Waiting for host...* only when everyone is ready.

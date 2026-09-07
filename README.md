@@ -47,6 +47,7 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Concealed voting** — **fix:** dummy local vote + hide self (3 buttons in 4-player) — every screen indistinguishable
 - **Rejoin & toasts** — **fix:** mid-game join (except `GAMEOVER`), `onDisconnect` ghost cleanup, `🟢/🔴/👑` toasts, submission no longer soft-locks when someone is AFK, and **Skip Unplayable** is now consistent for everyone (`Anyone can skip` + anyone can tap during `PLAYING`)
 - **Phase 1 — Room lifecycle** — **fix:** host **🔄 Play Again** resets the same room to lobby (same code/roster, scores zeroed) so rematches need no new code; host **End Room** deletes the node and routes everyone home; last-player leave auto-deletes (no orphans)
+- **Phase 2 — Duplicate names** — **fix:** join rejects taken names (`Name already taken in this room`, case-insensitive) so two "Alice"s can never split votes or steal bonuses
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 
@@ -96,8 +97,8 @@ npm test
 - **Session storage** — `src/lib/storage.test.ts` (9) + `storage.rigorous.test.ts` (10) — malformed/missing/overwrite/clear
 - **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (10) — 48 Telugu-cinema names with meanings, exhaustive ≤32
 - **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
-- **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (10) — reset keeps roster, last-leave deletes, rematch spec
-- **Total: 213 tests across 12 suites — all white-box + black-box for every bug fix**
+- **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (18) — reset keeps roster, last-leave deletes, rematch + duplicate-name spec
+- **Total: 221 tests across 12 suites — all white-box + black-box for every bug fix**
 
 ## Hosting
 

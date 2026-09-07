@@ -122,6 +122,14 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** New `src/lib/roomLifecycle.rigorous.test.ts` (10 cases — reset keeps id/name, no mutation, last-leave null, unknown-id, full reset shape, rematch spec). `210` total.
 
+## Phase 2 — Duplicate Names Blocked
+
+**Bug:** `joinRoom` accepted any name blindly. Two "Alice"s → both matched `submittedBy.includes(myName)` (both got dummy screens, both lost their vote) and `findPlayerIdByName` paid the bonus to the first match only.
+
+**Fix:** New pure `isNameTaken(players, name)` in `src/lib/roomLifecycle.ts` (trimmed, case-insensitive); `src/hooks/useRoom.ts joinRoom` throws `Name already taken in this room`, surfaced in the Entry red error box (no UI change needed). `createRoom` needs nothing (fresh room, single host). Tradeoff accepted: a lingering ghost briefly blocks its name until auto-cleaned; auto-takeover rejected (could hijack a live player).
+
+**Tests:** +8 cases in `roomLifecycle.rigorous.test.ts` (exact/case/whitespace/blank/empty/messy white + duplicate spec black). `221` total.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
@@ -137,8 +145,8 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
 | Room names rigorous          | `roomNames.rigorous.test.ts` | 10 | Telugu-cinema bank: exhaustive ≤32/meanings + dice spec |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
-| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 10 | Reset keeps roster, last-leave deletes, rematch spec |
-| **Total**                    |                          | **213**|                                                   |
+| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 18 | Reset keeps roster, last-leave deletes, rematch + duplicate-name spec |
+| **Total**                    |                          | **221**|                                                   |
 
 ## Polish — Telugu-Cinema Room Names with Meanings
 

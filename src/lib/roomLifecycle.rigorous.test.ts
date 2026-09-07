@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPlayAgainReset,
+  isNameTaken,
   removePlayer,
   resetPlayersForPlayAgain,
 } from '@/lib/roomLifecycle'
@@ -95,5 +96,48 @@ describe('BLACK-BOX: room lifecycle spec', () => {
     }
     expect(removePlayer(solo, 'p1')).toBeNull()
     expect(removePlayer(group, 'p1')).not.toBeNull()
+  })
+})
+
+// WHITE-BOX: isNameTaken branches
+describe('WHITE-BOX: isNameTaken branches', () => {
+  const players: Record<string, Player> = {
+    p1: makePlayer('p1', 'Alice'),
+    p2: makePlayer('p2', 'Bob'),
+  }
+
+  it('branch: exact match → taken', () => {
+    expect(isNameTaken(players, 'Alice')).toBe(true)
+  })
+  it('branch: case-insensitive match → taken', () => {
+    expect(isNameTaken(players, 'alice')).toBe(true)
+    expect(isNameTaken(players, 'ALICE')).toBe(true)
+    expect(isNameTaken(players, 'bOb')).toBe(true)
+  })
+  it('branch: surrounding whitespace ignored → taken', () => {
+    expect(isNameTaken(players, '  Alice  ')).toBe(true)
+  })
+  it('branch: distinct name → free', () => {
+    expect(isNameTaken(players, 'Carol')).toBe(false)
+  })
+  it('branch: blank name → free (validated elsewhere)', () => {
+    expect(isNameTaken(players, '')).toBe(false)
+    expect(isNameTaken(players, '   ')).toBe(false)
+  })
+  it('branch: empty roster → free', () => {
+    expect(isNameTaken({}, 'Alice')).toBe(false)
+  })
+  it('branch: stored name with whitespace still matches', () => {
+    const messy: Record<string, Player> = { p1: makePlayer('p1', '  Alice  ') }
+    expect(isNameTaken(messy, 'alice')).toBe(true)
+  })
+})
+
+// BLACK-BOX: duplicate-name spec
+describe('BLACK-BOX: duplicate-name spec', () => {
+  it('second Alice blocked, first Alice and Carol pass', () => {
+    const players: Record<string, Player> = { p1: makePlayer('p1', 'Alice') }
+    expect(isNameTaken(players, 'Alice')).toBe(true)
+    expect(isNameTaken(players, 'Carol')).toBe(false)
   })
 })
