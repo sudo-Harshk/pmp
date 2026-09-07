@@ -79,7 +79,7 @@ graph TD
     GAMEV --> ENTRY[EntryView.tsx<br/>Create (Your Name + auto Room Name + 🎲 reroll) / Join]
     GAMEV --> LOBBY[LobbyView.tsx<br/>🎬 roomName + room code + roster + mode toggle]
     GAMEV --> SUB[SubmissionView.tsx<br/>song form + readiness + Start Game/Playback]
-    GAMEV --> GV[GameView.tsx<br/>player + absolute 30s timer + vote lock-in + sit-out-but-listen + audio-only + Skip Unplayable]
+     GAMEV --> GV[GameView.tsx<br/>player + absolute 30s timer + concealed dummy vote + hide-self + audio-only + Skip Unplayable]
     GAMEV --> JB[JukeboxView.tsx<br/>common shuffled queue + seek sync + seek bar + queue tap<br/>anyone Prev/Pause/Next/Seek/Skip + visible queue like Spotify]
     GAMEV --> IM[IntermissionView.tsx<br/>7s countdown banner]
     GAMEV --> REV[RevealView.tsx<br/>submitters + guesses + sit-out bonus]
@@ -107,7 +107,7 @@ stateDiagram-v2
     GAMEOVER --> [*]
 ```
 
-**Host vs. Client:** The room has exactly one `hostId` for Guessing transitions, but the Jukebox common queue is now **Spotify-like: anyone can control**. Only the host may transition `SUBMISSION→PLAYING` (with one-time Fisher–Yates shuffle), run the global countdown, `hostReveal`, and toggle `mode` in the lobby. In Jukebox, **any player** can drive `Prev/Next` (`jukeboxNavigate`), tap any queue row (`jukeboxJump`), `Seek` (`jukeboxSeek`), and `Pause` (`setPlaybackPaused`) — all synced via `roundStartTime` + server-clock offset. All clients cast guesses (which lock with `Vote Locked ✅`) and submit songs. Owners of the current track **hear it together** with others but sit out voting (banner *“This is your song — sit out, you earn bonus if others miss”*), preventing self-vote cheating while keeping the watch-party synced. Votes are independent per player (no global `isTaken`), `101/150/100` unplayable videos show a host/anyone **Skip Unplayable Track** that `seekTo`-corrects drift (`>1.5 s`) via the expanded `YouTubePlayer` handle.
+**Host vs. Client:** The room has exactly one `hostId` for Guessing transitions, but the Jukebox common queue is **Spotify-like: anyone can control**. Only the host may transition `SUBMISSION→PLAYING` (with one-time Fisher–Yates shuffle), run the global countdown, `hostReveal`, and toggle `mode` in the lobby. In Jukebox, **any player** can drive `Prev/Next` (`jukeboxNavigate`), tap any queue row (`jukeboxJump`), `Seek` (`jukeboxSeek`), and `Pause` (`setPlaybackPaused`) — all synced via `roundStartTime` + server-clock offset. All clients submit songs and see the **same concealed voting UI**: `GameView` shows only other players (`candidates = players.filter(p≠me)`), no self-button or `(You)` label, `hasVoted` locks to `Vote Locked ✅`. A submitter's tap is a **local dummy** (`dummyVote` state, no `submitGuess` write, ignored by `scoring.ts` and excluded from `guessCount`/`eligible`), so every screen looks identical to a shoulder-surfer while keeping the watch-party synced. Votes are independent per player (no global `isTaken`), `101/150/100` unplayable videos show **Skip Unplayable Track** with `seekTo` drift fix.
 
 ## Firebase Realtime Database Schema
 
@@ -147,5 +147,5 @@ A player's identity is stored in `localStorage` under `play_my_playlist_session`
 
 - **Vitest** with five pure-logic suites run under jsdom — `youtube`, `scoring`, `playerLogic` (timer + `navigateJukebox` + `shuffleFisherYates` + duration constants), `storage`, and `roomNames`.
 - Logic that touches Firebase (`useRoom`) is intentionally kept thin; the testable rules (dedupe, scoring, timer, shuffle, intermission/jukebox navigation, roundStartTime drift, sit-out, session, room-name generation) live in pure modules under `src/lib/`. `playerLogic.test.ts` covers `INTERMISSION_DURATION_SECONDS (7)`, `JUKEBOX_MAX_SECONDS (180)`, `navigateJukebox()`, and `shuffleFisherYates`; `roomNames.test.ts` covers `generateRoomName()` format/length/variety.
-- `GameView` enforces single-vote lock-in locally (`voteLocked` + `isSubmitter` sit-out) so votes cannot be changed/cleared and no global `isTaken` steal; scoring guards and `hostReveal` `status===PLAYING` guard prevent double-scoring. `EntryView` keeps `Your Name` (host identity) and `Room Name` (auto-generated, rerollable) strictly separate.
+- `GameView` enforces concealed voting: every screen shows only others (no self), `voteLocked` + `isSubmitter` dummy (local `dummyVote`, no Firebase write, indistinguishable `Vote Locked ✅`), no global `isTaken` steal; scoring guards + `hostReveal` `status===PLAYING` guard prevent double-scoring. `EntryView` keeps `Your Name` and `Room Name` strictly separate.
 - Run everything with `npm test` (68 tests).

@@ -20,8 +20,8 @@ export default function GameView({
 }: GameViewProps) {
   const track = room.tracks[room.currentTrackIndex]
   const players = Object.values(room.players)
-  const candidates = players.map((p) => p.name)
   const myName = myPlayerId ? room.players[myPlayerId]?.name : null
+  const candidates = players.filter((p) => p.name !== myName).map((p) => p.name)
   const myGuess = myPlayerId ? room.guesses[myPlayerId] : undefined
   const eligibleGuessers = players.filter((p) => !track.submittedBy.includes(p.name)).length
   const guessCount = Object.keys(room.guesses).filter((id) => room.players[id] && !track.submittedBy.includes(room.players[id].name)).length
@@ -29,6 +29,7 @@ export default function GameView({
   const [hideVideo, setHideVideo] = useState(false)
   const [voteLocked, setVoteLocked] = useState(false)
   const [playerError, setPlayerError] = useState<number | null>(null)
+  const [dummyVote, setDummyVote] = useState<string | null>(null)
 
   const isSubmitter = myName ? track.submittedBy.includes(myName) : false
   const hasVoted = Boolean(myGuess) || voteLocked
@@ -36,6 +37,10 @@ export default function GameView({
   function handleGuess(name: string) {
     if (hasVoted) return
     setVoteLocked(true)
+    if (isSubmitter) {
+      setDummyVote(name)
+      return
+    }
     onSubmitGuess(name)
   }
 
@@ -50,6 +55,7 @@ export default function GameView({
 
   useEffect(() => {
     setVoteLocked(false)
+    setDummyVote(null)
     setPlayerError(null)
   }, [room.currentTrackIndex, room.status])
 
@@ -147,33 +153,25 @@ export default function GameView({
 
         <div className="mt-6">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {isSubmitter ? 'Your song — sit out' : hasVoted ? 'Vote Locked ✅' : 'Who submitted this song?'}
+            {hasVoted ? 'Vote Locked ✅' : 'Who submitted this song?'}
           </h3>
-          {isSubmitter ? (
-            <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm font-semibold text-amber-200">
-              This is your song — you all listen together, but you sit out voting. You earn bonus if others guess wrong.
-            </p>
-          ) : hasVoted ? (
+          {hasVoted ? (
             <p className="rounded-lg bg-indigo-500/10 px-3 py-2 text-center font-semibold text-indigo-300">
-              Vote Locked ✅ You guessed {myGuess}. Waiting for the reveal…
+              Vote Locked ✅ You guessed {isSubmitter ? dummyVote : myGuess}. Waiting for the reveal…
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {candidates.map((name) => {
-                const isSelf = name === myName
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    disabled={isSelf || hasVoted}
-                    onClick={() => handleGuess(name)}
-                    className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {name}
-                    {isSelf ? ' (You)' : ''}
-                  </button>
-                )
-              })}
+              {candidates.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  disabled={hasVoted}
+                  onClick={() => handleGuess(name)}
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {name}
+                </button>
+              ))}
             </div>
           )}
         </div>

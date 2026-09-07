@@ -14,7 +14,7 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 - **Smart deduplication** — duplicate songs merge into one track listing every submitter.
 - **Embedded player** — `react-youtube` with `seekTo`/`getCurrentTime`/`getDuration`, error handling for `101/150` embed blocks and `100` invalid, plus host/anyone **Skip Unplayable Track**.
 - **Audio-Only Mode** — hide the video (equalizer/vinyl overlay) for extra challenge.
-- **Vote lock-in & sit-out** — first guess locks `Vote Locked ✅`; owners of the current track hear it with friends but sit out voting (no cheating, they earn submitter bonus instead).
+- **Concealed voting** — every screen shows the same `Who submitted this song?` grid (only other players, never yourself); submitter's tap is a local dummy — identical `Vote Locked ✅` with zero Firebase write or scoring impact, indistinguishable to a shoulder-surfer.
 - **Intermission breathing space** — 7 s synchronized countdown banner between reveal and the next track.
 - **Session persistence + host failover** — reload/rejoin without losing identity, and if host leaves the first remaining player is auto-promoted.
 - **Genuine scoring** — `+10` per correct, `+5 × incorrect` split only among live submitters (no leakage), submitter self-guesses ignored, double-reveal blocked, `bestRound` tiebreak.

@@ -86,6 +86,14 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** New `src/lib/roomNames.test.ts` (4 cases — format, length cap, trimmed, variety). `68` total.
 
+## Fix — Concealed Voting (Dummy + Hide Self)
+
+**Bug:** When your own song played, an amber *“This is your song — sit out”* banner replaced the voting grid — a neighbour shoulder-surfing could instantly tell whose song it was. And your own name still appeared as a disabled `(You)` button.
+
+**Fix:** `src/components/game/GameView.tsx:23` now derives `candidates = players.filter(p.name !== myName)` so every screen shows **only other players** (3 buttons in a 4-player game, no `(You)` label, no self-button). The `isSubmitter` banner is removed; header is always `Who submitted this song?` → `Vote Locked ✅`. A submitter's tap sets local `dummyVote` (`:32/37`) and returns **without** `onSubmitGuess` — zero Firebase write, zero `scoring.ts` delta, excluded from `guessCount`/`eligible` counters, but shows the identical `Vote Locked ✅ You guessed {dummyVote}`. Every screen is now indistinguishable.
+
+**Tests:** No new suite (no component tests; scoring already ignores submitter guesses); `68` total unchanged.
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |
