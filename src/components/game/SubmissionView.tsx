@@ -149,21 +149,21 @@ export default function SubmissionView({
           ))}
         </ul>
 
-        {allSubmitted &&
-          (isHost ? (
+        {isHost ? (
+          room.tracks.length > 0 ? (
             <button
               type="button"
               onClick={onNext}
-              disabled={room.tracks.length === 0}
               className="mt-4 w-full rounded-lg bg-indigo-500 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
             >
               {room.mode === 'JUKEBOX' ? 'Start Playback' : 'Start Game'}
             </button>
-          ) : (
-            <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-xs font-semibold text-emerald-300">
-              Everyone is ready! Waiting for host to start...
-            </p>
-          ))}
+          ) : null
+        ) : allSubmitted ? (
+          <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-xs font-semibold text-emerald-300">
+            Everyone is ready! Waiting for host to start...
+          </p>
+        ) : null}
       </div>
     </div>
   )

@@ -12,11 +12,12 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 - **Watch-party sync** — absolute `roundStartTime` + server-clock correction + `seekTo` drift fix (everyone hears the same second, even late join).
 - **Jukebox common queue** — shuffled Fisher–Yates playlist visible as a queue below the player, **anyone** can `Prev / Pause / Next / Seek / tap to jump`, all synced via `roundStartTime`.
 - **Smart deduplication** — duplicate songs merge into one track listing every submitter.
-- **Embedded player** — `react-youtube` with `seekTo`/`getCurrentTime`/`getDuration`, error handling for `101/150` embed blocks and `100` invalid, plus host/anyone **Skip Unplayable Track**.
+- **Embedded player** — `react-youtube` with `seekTo`/`getCurrentTime`/`getDuration`, error handling for `101/150` embed blocks and `100` invalid, plus **Skip Unplayable Track** shown to everyone only when `101/150/100` (anyone can tap, consistent banner).
 - **Audio-Only Mode** — hide the video (equalizer/vinyl overlay) for extra challenge.
 - **Concealed voting** — every screen shows the same `Who submitted this song?` grid (only other players, never yourself); submitter's tap is a local dummy — identical `Vote Locked ✅` with zero Firebase write or scoring impact, indistinguishable to a shoulder-surfer.
 - **Intermission breathing space** — 7 s synchronized countdown banner between reveal and the next track.
-- **Session persistence + host failover** — reload/rejoin without losing identity, and if host leaves the first remaining player is auto-promoted.
+- **Session persistence + host failover + toasts** — reload/rejoin without losing identity; `onDisconnect` auto-cleans ghosts on tab-close; `🟢 joined` / `🔴 left` / `👑 You are now host` toasts for everyone; host failover auto-promotes.
+- **Mid-game rejoin** — anyone can join the same 4-letter code during `SUBMISSION`/`PLAYING`/`REVEAL`/`INTERMISSION` and lands on the current screen; only `GAMEOVER` blocks with `Game over — ask the host to start a new room`.
 - **Genuine scoring** — `+10` per correct, `+5 × incorrect` split only among live submitters (no leakage), submitter self-guesses ignored, double-reveal blocked, `bestRound` tiebreak.
 - **Victory confetti** — celebratory cannon on the final leaderboard.
 
@@ -43,6 +44,8 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Refinements** — 7 s intermission, vote lock-in, jukebox mode
 - **Hardening & Jam** — shuffled Fisher–Yates playlist, vote-independence + sit-out-but-listen, absolute `roundStartTime` + `seekTo` sync, host failover, YouTube skip, scoring fixes, Jukebox common queue (anyone controls)
 - **Room identity** — **fix:** `Room Name` is now separate from `Host Name` (auto-generated fun names with 🎲 reroll, editable, `≤32` chars; lobby + header show `🎬 {roomName} · {code}`, legacy rooms fall back to `Room {code}`)
+- **Concealed voting** — **fix:** dummy local vote + hide self (3 buttons in 4-player) — every screen indistinguishable
+- **Rejoin & toasts** — **fix:** mid-game join (except `GAMEOVER`), `onDisconnect` ghost cleanup, `🟢/🔴/👑` toasts, submission no longer soft-locks when someone is AFK, and **Skip Unplayable** is now consistent for everyone (`Anyone can skip` + anyone can tap during `PLAYING`)
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 

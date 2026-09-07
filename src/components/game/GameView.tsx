@@ -14,7 +14,7 @@ interface GameViewProps {
 export default function GameView({
   room,
   myPlayerId,
-  isHost,
+  isHost: _isHost,
   onSubmitGuess,
   onSkip,
 }: GameViewProps) {
@@ -46,7 +46,7 @@ export default function GameView({
 
   function handlePlayerError(code: number) {
     if ([100, 101, 150].includes(code)) {
-      console.warn(`YouTube player error ${code} for video ${track?.videoId} — unplayable, host can skip`)
+      console.warn(`YouTube player error ${code} for video ${track?.videoId} — unplayable, anyone can skip`)
     } else {
       console.warn(`YouTube player error ${code} for video ${track?.videoId}`)
     }
@@ -117,12 +117,12 @@ export default function GameView({
         {playerError !== null && (
           <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs font-semibold text-amber-300">
             { [100, 101, 150].includes(playerError)
-              ? `Video unplayable (error ${playerError}). Host can skip.`
-              : `Player error ${playerError}. Host can skip if needed.`}
+              ? `Video unplayable (error ${playerError}). Anyone can skip.`
+              : `Player error ${playerError}. Anyone can skip if needed.`}
           </div>
         )}
 
-        {isHost && (
+        {playerError !== null && [100, 101, 150].includes(playerError) && (
           <button
             type="button"
             onClick={onSkip}

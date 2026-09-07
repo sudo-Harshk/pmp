@@ -94,6 +94,14 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 
 **Tests:** No new suite (no component tests; scoring already ignores submitter guesses); `68` total unchanged.
 
+## Fix — Mid-game Rejoin, Toasts & Consistent Skip
+
+**Bugs:** Leaving player showed no `left` toast, ghosts lingered on tab-close, and `joinRoom` threw `Room already in progress` for any status ≠ `LOBBY`, so a leaver couldn't rejoin without recreating. Required `allSubmitted` soft-locked `SubmissionView` start. `GameView` showed `Host can skip` banner to everyone but the `Skip Unplayable Track` button only to the host — non-host guessers saw the banner with no action.
+
+**Fix:** `src/hooks/useRoom.ts:226` `joinRoom` now allows `LOBBY/SUBMISSION/PLAYING/REVEAL/INTERMISSION`, blocked only at `GAMEOVER` (`Game over — ask the host to start a new room`); both `createRoom`/`joinRoom` register `onDisconnect(players/{id}).remove()` for tab-close ghost cleanup. New `src/components/Toasts.tsx:1` diffs `players` keys (skipping initial load) for `🟢 {name} joined` / `🔴 {name} left` / `👑 You are now the host` (host failover promotion) at fixed bottom-center, 4 s auto-dismiss; wired in `src/App.tsx:13`. `src/components/game/SubmissionView.tsx:152` host Start now enabled when `room.tracks.length>0`, not gated on `allSubmitted`, so AFK/late joiners can't block. `src/components/game/GameView.tsx:47` banner now `Anyone can skip` for everyone and `Skip Unplayable Track` button rendered for **everyone only when `101/150/100`**; `src/hooks/useRoom.ts:365` `hostNext` is host-only except `PLAYING` skip which is open to anyone (other transitions still host-guarded).
+
+**Tests:** `typecheck`/`68` tests/`build` green; no new suite (RTDB/toast logic is integration).
+
 ## Test Coverage Overview
 
 | Suite                        | File                     | Cases | Focus                                              |

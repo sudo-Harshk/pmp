@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   get,
+  onDisconnect,
   onValue,
   ref,
   remove,
@@ -218,6 +219,11 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
 
       await set(ref(db, `rooms/${code}`), roomState)
       setMyPlayerId(hostId)
+      try {
+        await onDisconnect(ref(db, `rooms/${code}/players/${hostId}`)).remove()
+      } catch {
+        // onDisconnect may fail if offline — leaveRoom covers explicit leaves
+      }
       return { roomCode: code, playerId: hostId }
     },
     [],
@@ -232,8 +238,8 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       if (!current) {
         throw new Error('Room not found')
       }
-      if (current.status !== 'LOBBY') {
-        throw new Error('Room already in progress')
+      if (current.status === 'GAMEOVER') {
+        throw new Error('Game over — ask the host to start a new room')
       }
       const player: Player = {
         id: playerId,
@@ -244,6 +250,11 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       }
       await update(ref(db, `rooms/${code}/players`), { [playerId]: player })
       setMyPlayerId(playerId)
+      try {
+        await onDisconnect(ref(db, `rooms/${code}/players/${playerId}`)).remove()
+      } catch {
+        // ignore — explicit leaveRoom handles the normal path
+      }
       return playerId
     },
     [],
@@ -352,18 +363,19 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
   }, [room, myPlayerId])
 
   const hostNext = useCallback(async (code: string): Promise<void> => {
-    if (!room || room.hostId !== myPlayerId) return
+    if (!room || !myPlayerId) return
     const callerId = myPlayerId
     await runTransaction(ref(db, `rooms/${code}`), (currentVal) => {
-      if (currentVal !== null) {
-        const hostId = (currentVal as Record<string, unknown>).hostId as string | undefined
-        if (hostId !== callerId) return currentVal
-      }
       if (currentVal === null) return currentVal
       const data = currentVal as Record<string, unknown>
       const tracks = Array.isArray(data.tracks) ? (data.tracks as PlaylistTrack[]) : []
       const currentIndex = (data.currentTrackIndex as number) ?? 0
       const status = data.status as RoomState['status']
+      // Host-only for non-PLAYING transitions; PLAYING skip is open to everyone (unplayable handling)
+      if (status !== 'PLAYING') {
+        const hostId = data.hostId as string | undefined
+        if (hostId !== callerId) return currentVal
+      }
 
       if (status === 'SUBMISSION' || (status === 'PLAYING' && (data.mode as GameMode) === 'JUKEBOX' && tracks.length === 0)) {
         // Begin playback at the first track once submissions are in — shuffle once for engagement.

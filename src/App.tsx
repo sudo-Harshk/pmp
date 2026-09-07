@@ -9,6 +9,7 @@ import JukeboxView from '@/components/game/JukeboxView'
 import IntermissionView from '@/components/game/IntermissionView'
 import RevealView from '@/components/game/RevealView'
 import LeaderboardView from '@/components/game/LeaderboardView'
+import Toasts from '@/components/Toasts'
 import type { GameMode, RoomState } from '@/types/game'
 
 export default function App() {
@@ -140,6 +141,8 @@ export default function App() {
           />
         )}
       </main>
+
+      {inRoom && <Toasts room={room} myPlayerId={myPlayerId} />}
     </div>
   )
 }
