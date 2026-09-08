@@ -77,3 +77,20 @@ export function buildPlayAgainReset(players: Record<string, Player>): PlayAgainR
     players: resetPlayersForPlayAgain(players),
   }
 }
+
+export interface JoinResult {
+  /** Normalized room code (trimmed, uppercased) — the ONLY value routing may use. */
+  roomCode: string
+  /** Player identity — session storage only, never a routing value. */
+  playerId: string
+}
+
+/**
+ * Normalize a successful join into session values.
+ * The resolved `roomCode` is what `onEntered`/`setRoomCode` must receive so the
+ * listener subscribes to `rooms/{roomCode}`; returning the `playerId` instead
+ * routes to a nonexistent node and bounces the joiner back home.
+ */
+export function buildJoinResult(code: string, playerId: string): JoinResult {
+  return { roomCode: code.trim().toUpperCase(), playerId }
+}

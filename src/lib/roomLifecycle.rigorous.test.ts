@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildJoinResult,
   buildPlayAgainReset,
   clampSongCount,
   DEFAULT_SONGS_PER_PLAYER,
@@ -219,5 +220,44 @@ describe('BLACK-BOX: host-fixed count spec', () => {
     const stored = limitUrls(['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'], 5)
     expect(stored).toHaveLength(5)
     expect(stored).toEqual(['u1', 'u2', 'u3', 'u4', 'u5'])
+  })
+})
+
+// WHITE-BOX: buildJoinResult branches
+describe('WHITE-BOX: buildJoinResult branches', () => {
+  it('branch: lowercase code uppercased', () => {
+    expect(buildJoinResult('abcd', 'player-1')).toEqual({ roomCode: 'ABCD', playerId: 'player-1' })
+  })
+  it('branch: surrounding whitespace trimmed', () => {
+    expect(buildJoinResult('  abcd  ', 'player-1')).toEqual({ roomCode: 'ABCD', playerId: 'player-1' })
+  })
+  it('branch: already-normalized code passes through', () => {
+    expect(buildJoinResult('ABCD', 'player-1')).toEqual({ roomCode: 'ABCD', playerId: 'player-1' })
+  })
+  it('branch: mixed case normalized', () => {
+    expect(buildJoinResult('aBcD', 'player-1')).toEqual({ roomCode: 'ABCD', playerId: 'player-1' })
+  })
+  it('branch: playerId preserved untouched (never normalized)', () => {
+    const result = buildJoinResult('abcd', '  Mixed-Case-UUID-123  ')
+    expect(result.playerId).toBe('  Mixed-Case-UUID-123  ')
+    expect(result.roomCode).toBe('ABCD')
+  })
+})
+
+// BLACK-BOX: join-routing regression spec (join bounced home)
+describe('BLACK-BOX: join-routing regression spec', () => {
+  it('resolved value is the room code, never the playerId', () => {
+    // Regression: handleJoinRoom returned the playerId, so onEntered routed to
+    // rooms/<uuid> (nonexistent) and the joiner bounced back to EntryView.
+    const playerId = '550e8400-e29b-41d4-a716-446655440000'
+    const result = buildJoinResult('abcd', playerId)
+    const routedTo = result.roomCode // what onEntered/setRoomCode receives
+    expect(routedTo).toBe('ABCD')
+    expect(routedTo).not.toBe(playerId)
+  })
+  it('session stores normalized code with the untouched playerId', () => {
+    const result = buildJoinResult(' abcd ', 'player-1')
+    expect(result.roomCode).toBe('ABCD')
+    expect(result.playerId).toBe('player-1')
   })
 })

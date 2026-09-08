@@ -11,6 +11,7 @@ import RevealView from '@/components/game/RevealView'
 import LeaderboardView from '@/components/game/LeaderboardView'
 import Toasts from '@/components/Toasts'
 import { APP_BUILD, getBuildLabel } from '@/lib/version'
+import { buildJoinResult } from '@/lib/roomLifecycle'
 import type { GameMode, RoomState } from '@/types/game'
 
 export default function App() {
@@ -52,9 +53,10 @@ export default function App() {
 
   async function handleJoinRoom(code: string, playerName: string) {
     const playerId = await joinRoom(code, playerName)
-    saveSession(code.trim().toUpperCase(), playerId)
-    setRoomCode(code.trim().toUpperCase())
-    return playerId
+    const result = buildJoinResult(code, playerId)
+    saveSession(result.roomCode, result.playerId)
+    setRoomCode(result.roomCode)
+    return result.roomCode
   }
 
   function handleLeave() {
