@@ -21,7 +21,9 @@ export default function GameView({
   const track = room.tracks[room.currentTrackIndex]
   const players = Object.values(room.players)
   const myName = myPlayerId ? room.players[myPlayerId]?.name : null
-  const candidates = players.filter((p) => p.name !== myName).map((p) => p.name)
+  // Everyone sees the identical full roster (including self), sorted so order
+  // matches on all screens. Submitter taps are local dummies — no shoulder-surf leak.
+  const candidates = [...players].sort((a, b) => a.name.localeCompare(b.name)).map((p) => p.name)
   const myGuess = myPlayerId ? room.guesses[myPlayerId] : undefined
   const eligibleGuessers = players.filter((p) => !track.submittedBy.includes(p.name)).length
   const guessCount = Object.keys(room.guesses).filter((id) => room.players[id] && !track.submittedBy.includes(room.players[id].name)).length

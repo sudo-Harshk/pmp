@@ -14,7 +14,7 @@ Players submit YouTube links, the game deduplicates identical songs into a singl
 - **Smart deduplication** — duplicate songs merge into one track listing every submitter.
 - **Embedded player** — `react-youtube` with `seekTo`/`getCurrentTime`/`getDuration`, error handling for `101/150` embed blocks and `100` invalid, plus **Skip Unplayable Track** shown to everyone only when `101/150/100` (anyone can tap, consistent banner).
 - **Audio-Only Mode** — hide the video (equalizer/vinyl overlay) for extra challenge.
-- **Concealed voting** — every screen shows the same `Who submitted this song?` grid (only other players, never yourself); submitter's tap is a local dummy — identical `Vote Locked ✅` with zero Firebase write or scoring impact, indistinguishable to a shoulder-surfer.
+- **Concealed voting** — every screen shows the identical `Who submitted this song?` grid (full roster including yourself, same sorted order); submitter's tap is a local dummy — identical `Vote Locked ✅` with zero Firebase write or scoring impact, indistinguishable to a shoulder-surfer.
 - **Intermission breathing space** — 7 s synchronized countdown banner between reveal and the next track.
 - **Session persistence + host failover + toasts** — reload/rejoin without losing identity; `onDisconnect` auto-cleans ghosts on tab-close; `🟢 joined` / `🔴 left` / `👑 You are now host` toasts for everyone; host failover auto-promotes.
 - **Mid-game rejoin** — anyone can join the same 4-letter code during `SUBMISSION`/`PLAYING`/`REVEAL`/`INTERMISSION` and lands on the current screen; only `GAMEOVER` blocks with `Game over — ask the host to start a new room`.

@@ -5,8 +5,10 @@ import type { Player } from '@/types/game'
 // Pure helpers extracted from bugfix logic (mirrors actual code)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getVoteCandidates(players: Player[], myName: string | null): string[] {
-  return players.filter((p) => p.name !== myName).map((p) => p.name)
+function getVoteCandidates(players: Player[], _myName: string | null): string[] {
+  // Mirrors GameView: identical full roster (including self), sorted — no shoulder-surf leak.
+  // _myName is intentionally ignored so every viewer sees the same list.
+  return [...players].sort((a, b) => a.name.localeCompare(b.name)).map((p) => p.name)
 }
 
 function shouldShowSkip(playerError: number | null): boolean {
@@ -55,20 +57,22 @@ function normalizeRoomName(input: string, fallbackCode: string): string {
 // WHITE-BOX: branch coverage for each helper
 // ─────────────────────────────────────────────────────────────────────────────
 describe('WHITE-BOX: getVoteCandidates branches', () => {
-  it('branch: myName null → returns all', () => {
-    const players = [{ name: 'Alice' } as Player, { name: 'Bob' } as Player]
+  it('branch: myName null → returns all sorted', () => {
+    const players = [{ name: 'Bob' } as Player, { name: 'Alice' } as Player]
     expect(getVoteCandidates(players, null)).toEqual(['Alice', 'Bob'])
   })
-  it('branch: filters self', () => {
+  it('branch: includes self — identical for submitter and guesser', () => {
     const players = [{ name: 'Alice' } as Player, { name: 'Bob' } as Player, { name: 'Carol' } as Player]
-    expect(getVoteCandidates(players, 'Bob')).toEqual(['Alice', 'Carol'])
+    expect(getVoteCandidates(players, 'Bob')).toEqual(['Alice', 'Bob', 'Carol'])
   })
   it('branch: empty players → empty', () => {
     expect(getVoteCandidates([], 'Alice')).toEqual([])
   })
-  it('branch: 3+ players minimum still leaves N-1 candidates', () => {
+  it('branch: N players → N candidates, same list for every viewer', () => {
     const players = [{ name: 'A' } as Player, { name: 'B' } as Player, { name: 'C' } as Player, { name: 'D' } as Player]
-    expect(getVoteCandidates(players, 'A')).toHaveLength(3)
+    for (const me of ['A', 'B', 'C', 'D', null]) {
+      expect(getVoteCandidates(players, me)).toEqual(['A', 'B', 'C', 'D'])
+    }
   })
 })
 
@@ -177,12 +181,12 @@ describe('WHITE-BOX: normalizeRoomName branches', () => {
 // BLACK-BOX: spec-based behavior (no knowledge of branches)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('BLACK-BOX: voting concealment spec', () => {
-  it('every screen shows N-1 candidates, never self, indistinguishable', () => {
+  it('every screen shows identical N candidates, including self', () => {
     const players = [{ name: 'Alice' } as Player, { name: 'Bob' } as Player, { name: 'Carol' } as Player, { name: 'Dave' } as Player]
-    for (const me of ['Alice', 'Bob', 'Carol', 'Dave']) {
-      const cands = getVoteCandidates(players, me)
-      expect(cands).not.toContain(me)
-      expect(cands).toHaveLength(3)
+    const first = getVoteCandidates(players, 'Alice')
+    expect(first).toEqual(['Alice', 'Bob', 'Carol', 'Dave'])
+    for (const me of ['Bob', 'Carol', 'Dave']) {
+      expect(getVoteCandidates(players, me)).toEqual(first)
     }
   })
   it('dummy vote has no scoring effect (simulated: submitter vote ignored)', () => {
