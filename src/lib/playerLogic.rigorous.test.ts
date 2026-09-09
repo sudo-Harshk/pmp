@@ -154,11 +154,11 @@ describe('WHITE-BOX: shuffleFisherYates branches (randomInt)', () => {
 
 // BLACK-BOX: spec
 describe('BLACK-BOX: playerLogic spec', () => {
-  it('snippet timer: 30s full, counts down only when running, stops at 0', () => {
+  it('snippet timer: 15s full, counts down only when running, stops at 0', () => {
     let s = createInitialSnippetState()
-    expect(s.secondsRemaining).toBe(30)
+    expect(s.secondsRemaining).toBe(15)
     s = snippetReducer(s, { type: 'START' })
-    for (let i = 0; i < 30; i++) s = snippetReducer(s, { type: 'TICK' })
+    for (let i = 0; i < 15; i++) s = snippetReducer(s, { type: 'TICK' })
     expect(s.secondsRemaining).toBe(0)
     expect(s.running).toBe(false)
   })
@@ -176,9 +176,9 @@ describe('BLACK-BOX: playerLogic spec', () => {
     expect(navigateJukebox(0, 0, { type: 'NEXT' }).finished).toBe(true)
     expect(navigateJukebox(-1, 3, { type: 'NEXT' }).currentTrackIndex).toBe(0)
   })
-  it('constants: 30, 7, 180', () => {
-    expect(SNIPPET_DURATION_SECONDS).toBe(30)
-    expect(INTERMISSION_DURATION_SECONDS).toBe(7)
+  it('constants: 15, 5, 180', () => {
+    expect(SNIPPET_DURATION_SECONDS).toBe(15)
+    expect(INTERMISSION_DURATION_SECONDS).toBe(5)
     expect(JUKEBOX_MAX_SECONDS).toBe(180)
   })
 })

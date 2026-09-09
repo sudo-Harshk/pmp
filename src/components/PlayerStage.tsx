@@ -197,7 +197,7 @@ function SnippetTimer({ secondsRemaining, running }: SnippetTimerProps) {
   return (
     <div className="mt-4">
       <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
-        <span>30s Snippet</span>
+        <span>15s Snippet</span>
         <span className={timeUp ? 'font-semibold text-rose-400' : 'font-mono'}>
           {timeUp ? 'Time is up!' : `${secondsRemaining}s remaining`}
         </span>

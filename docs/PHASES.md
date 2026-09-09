@@ -160,7 +160,7 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
 | Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 32 | Reset, last-leave, rematch, duplicate names + host-fixed count spec |
 | Build marker                 | `version.rigorous.test.ts` | 5 | Missing/blank/40-char/short/custom label branches |
-| **Total**                    |                          | **240**|                                                   |
+| **Total**                    |                          | **249**|                                                   |
 
 ## Host-Fixed Song Count (Exactly N)
 
@@ -185,3 +185,11 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 **Fix:** `src/lib/roomNames.ts` now holds 48 curated `ROOM_NAMES` entries (iconic titles + twists like "Ee Playlistki Emaindi", "SR Karaoke Mandapam", "DJ Tillu Tunes"), each with a `meaning`. New `generateRoomNameEntry()` / `getRoomNameMeaning()`; `src/components/game/EntryView.tsx` shows `💡 {meaning}` under the Room Name field (updates on 🎲 reroll, hides when hand-typed). All names ≤ 32 chars.
 
 **Tests:** `roomNames.rigorous.test.ts` rewritten (10 cases — exhaustive bank ≤32/meanings/uniqueness + dice spec). `213` total.
+
+## Pacing — 15s Snippets + 5s Intermission
+
+**Ask:** shorter rounds so multiple games fit per session (~25s/round, ~2× games).
+
+**Fix:** `SNIPPET_DURATION_SECONDS 30→15`, `INTERMISSION_DURATION_SECONDS 7→5` (`src/lib/playerLogic.ts:1`) — the single source everything derives from (host ticker, `hostNext`, seek sync, Play Again reset, progress bars), so no logic changes. Labels → "15s Snippet" (`GameView`, legacy `PlayerStage`); `IntermissionView` already renders dynamically. Tests updated to 15/5 literals; docs swept.
+
+**Tests:** `249` total unchanged (updated, not added).

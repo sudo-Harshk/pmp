@@ -1,5 +1,5 @@
-export const SNIPPET_DURATION_SECONDS = 30
-export const INTERMISSION_DURATION_SECONDS = 7
+export const SNIPPET_DURATION_SECONDS = 15
+export const INTERMISSION_DURATION_SECONDS = 5
 export const JUKEBOX_MAX_SECONDS = 180
 
 export interface SnippetState {

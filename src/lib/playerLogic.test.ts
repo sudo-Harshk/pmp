@@ -12,17 +12,17 @@ import {
 } from '@/lib/playerLogic'
 
 describe('snippetReducer — timer transitions', () => {
-  it('starts with the full 30-second duration and not running', () => {
+  it('starts with the full 15-second duration and not running', () => {
     const state = createInitialSnippetState()
     expect(state.secondsRemaining).toBe(SNIPPET_DURATION_SECONDS)
-    expect(state.secondsRemaining).toBe(30)
+    expect(state.secondsRemaining).toBe(15)
     expect(state.running).toBe(false)
   })
 
   it('does not tick while paused', () => {
     let state = createInitialSnippetState()
     state = snippetReducer(state, { type: 'TICK' })
-    expect(state.secondsRemaining).toBe(30)
+    expect(state.secondsRemaining).toBe(15)
     expect(state.running).toBe(false)
   })
 
@@ -31,7 +31,7 @@ describe('snippetReducer — timer transitions', () => {
     state = snippetReducer(state, { type: 'TICK' })
     state = snippetReducer(state, { type: 'TICK' })
     state = snippetReducer(state, { type: 'TICK' })
-    expect(state.secondsRemaining).toBe(27)
+    expect(state.secondsRemaining).toBe(12)
     expect(state.running).toBe(true)
   })
 
@@ -59,7 +59,7 @@ describe('snippetReducer — timer transitions', () => {
     state = snippetReducer(state, { type: 'TICK' })
     state = snippetReducer(state, { type: 'PAUSE' })
     state = snippetReducer(state, { type: 'TICK' })
-    expect(state.secondsRemaining).toBe(28)
+    expect(state.secondsRemaining).toBe(13)
     expect(state.running).toBe(false)
   })
 
@@ -105,8 +105,8 @@ describe('track boundary navigation', () => {
 })
 
 describe('intermission and jukebox constants', () => {
-  it('exposes a 7-second intermission duration', () => {
-    expect(INTERMISSION_DURATION_SECONDS).toBe(7)
+  it('exposes a 5-second intermission duration', () => {
+    expect(INTERMISSION_DURATION_SECONDS).toBe(5)
   })
 
   it('exposes a 180-second jukebox max duration', () => {

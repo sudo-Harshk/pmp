@@ -136,7 +136,7 @@ export default function GameView({
 
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="text-slate-400">30s Snippet</span>
+            <span className="text-slate-400">15s Snippet</span>
             <span className={`font-mono font-semibold ${timeUp ? 'text-rose-400' : 'text-white'}`}>
               {timeUp ? 'Time is up!' : `${room.timerSeconds}s`}
             </span>

@@ -2,12 +2,12 @@
 
 A **synchronous multiplayer** YouTube playlist guessing game built with React + TypeScript, Vite, Tailwind CSS, and Firebase Realtime Database.
 
-Players submit YouTube links, the game deduplicates identical songs into a single track, and everyone guesses **who** submitted each song within a 30-second snippet. Correct guesses and submitter bonuses earn points; the highest scorer takes the crown.
+Players submit YouTube links, the game deduplicates identical songs into a single track, and everyone guesses **who** submitted each song within a 15-second snippet. Correct guesses and submitter bonuses earn points; the highest scorer takes the crown.
 
 ## Highlights
 
 - **Real-time multiplayer** — rooms with auto-generated Telugu-cinema names (`Pokiri Playlist`, `DJ Tillu Tunes` — tap 🎲 to reroll, each with its joke explained 💡), live submissions, voting, and a host-managed loop synced over Firebase RTDB.
-- **Two play modes** — host picks in the lobby: **Guessing Game** (30 s snippet + voting + reveal + 7 s intermission) or **Casual Jukebox** (common shuffled playlist, full playback up to 3 min, Spotify-like jam).
+- **Two play modes** — host picks in the lobby: **Guessing Game** (15 s snippet + voting + reveal + 5 s intermission) or **Casual Jukebox** (common shuffled playlist, full playback up to 3 min, Spotify-like jam).
 - **Shuffled playlist** — Fisher–Yates shuffle (open-source, `crypto.getRandomValues` → `Math.random` fallback) once at game start so order is never straight; deduped tracks never leak submitter order.
 - **Watch-party sync** — absolute `roundStartTime` + server-clock correction + `seekTo` drift fix (everyone hears the same second, even late join).
 - **Jukebox common queue** — shuffled Fisher–Yates playlist visible as a queue below the player, **anyone** can `Prev / Pause / Next / Seek / tap to jump`, all synced via `roundStartTime`.
