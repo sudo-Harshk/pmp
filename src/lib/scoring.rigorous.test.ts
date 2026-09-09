@@ -75,7 +75,7 @@ describe('WHITE-BOX: calculateRoundScores branches', () => {
     }
     // Track has Alice + Ghost (departed), but only Alice is live
     const t = track(['Alice', 'Ghost'])
-    const guesses: Record<string, string> = { pBob: 'Carol', pCarol: 'Carol' } // 2 incorrect
+    const guesses: Record<string, string> = { pBob: 'Carol', pCarol: 'Dave' } // 2 incorrect (non-self)
     const { deltas } = calculateRoundScores(t, guesses, {}, players)
     // Pool = 10, divided by 1 live submitter → Alice gets 10 (not 5 with leakage 5/2)
     expect(deltas.pAlice).toBe(10)
@@ -184,8 +184,8 @@ describe('BLACK-BOX: scoring spec', () => {
 
   it('spec: +5 per incorrect guesser split among live submitters', () => {
     const t = track(['Alice', 'Bob'])
-    const { deltas } = calculateRoundScores(t, { pCarol: 'Dave', pDave: 'Dave' }, {}, players)
-    // 2 incorrect → pool 10 → 5/5
+    const { deltas } = calculateRoundScores(t, { pCarol: 'Dave', pDave: 'Carol' }, {}, players)
+    // 2 incorrect (non-self) → pool 10 → 5/5
     expect(deltas.pAlice).toBe(5)
     expect(deltas.pBob).toBe(5)
   })
@@ -211,6 +211,23 @@ describe('BLACK-BOX: scoring spec', () => {
     const { deltas, scores } = calculateRoundScores(t, {}, { pBob: 7 }, players)
     expect(deltas).toEqual({})
     expect(scores).toEqual({ pBob: 7 })
+  })
+
+  it('spec: non-submitter self-vote is fully void (no delta, no pool feed)', () => {
+    const t = track(['Alice'])
+    // Bob votes himself: void — Alice gets no bonus from it
+    const { deltas } = calculateRoundScores(t, { pBob: 'Bob' }, {}, players)
+    expect(deltas.pBob).toBeUndefined()
+    expect(deltas.pAlice).toBeUndefined()
+  })
+
+  it('spec: self-vote mixed with real incorrect does not inflate pool', () => {
+    const t = track(['Alice'])
+    // Bob self-votes (void) + Carol genuinely incorrect → pool from Carol only = 5
+    const { deltas } = calculateRoundScores(t, { pBob: 'Bob', pCarol: 'Dave' }, {}, players)
+    expect(deltas.pBob).toBeUndefined()
+    expect(deltas.pCarol).toBe(0)
+    expect(deltas.pAlice).toBe(5)
   })
 })
 

@@ -58,6 +58,7 @@ Incorrect guessers: 1 → bonus pool = 5, split `3 / 2` between Alice and Bob.
 
 - `guesses` is keyed by **player ID**; the `submittedBy` values are **names**. The `players` record is used to map each submitter name back to a player ID so bonuses land on the right player.
 - Guesses from departed players or from a submitter of the current track are **ignored** (no `+10`, not counted toward `incorrect` pool) — owners see the identical full voting grid but their tap is a local dummy (`Vote Locked ✅`, zero Firebase write), so they cannot farm own bonus via devtools.
+- Self-votes (guessed name = own name) are fully **void** — no `+10`, never counted toward the `incorrect` pool — because the grid shows yourself; this keeps the identical-grid UI cheat-proof.
 - Submitters who do **not** resolve to a live player ID are skipped and do **not** dilute the split (no leakage).
 - Double `hostReveal` is blocked inside the transaction (`status !== PLAYING` → no-op), so a round cannot be scored twice.
 - `RevealView` now renders sit-out submitters (`sat out — your track ★ +5`) not just guessers, so bonuses are visible; `GameView` counter is `eligible = players - submittedBy` and `guessCount` excludes departed/self.

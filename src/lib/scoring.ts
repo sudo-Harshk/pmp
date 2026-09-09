@@ -30,6 +30,8 @@ export function calculateRoundScores(
     const guesserName = players[guesserId]?.name
     if (guesserName && correctNames.has(guesserName)) continue
     const guessedName = guesses[guesserId]
+    // Self-votes are void — no +10 and never feed the incorrect pool (full-roster UI shows self)
+    if (guessedName === guesserName) continue
     const delta = correctNames.has(guessedName) ? CORRECT_GUESS_POINTS : 0
     deltas[guesserId] = (deltas[guesserId] ?? 0) + delta
     scores[guesserId] = (scores[guesserId] ?? 0) + delta
@@ -39,6 +41,7 @@ export function calculateRoundScores(
     if (!players[guesserId]) return false
     const guesserName = players[guesserId]?.name
     if (guesserName && correctNames.has(guesserName)) return false
+    if (guesses[guesserId] === guesserName) return false
     return !correctNames.has(guesses[guesserId])
   }).length
 
