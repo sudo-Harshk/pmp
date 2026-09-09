@@ -158,9 +158,17 @@ A record of how this project was built, phase by phase. Each phase shipped as a 
 | Room names                   | `roomNames.test.ts`      | 4     | Auto-generated room name format/length/variety |
 | Room names rigorous          | `roomNames.rigorous.test.ts` | 10 | Telugu-cinema bank: exhaustive ≤32/meanings + dice spec |
 | Bugfixes (voting/skip/join)  | `bugfixes.rigorous.test.ts` | 44 | White+black: candidates/skip/join/failover/toasts/start/roomName |
-| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 32 | Reset, last-leave, rematch, duplicate names + host-fixed count spec |
+| Room lifecycle               | `roomLifecycle.rigorous.test.ts` | 40 | Reset, last-leave, rematch, duplicate names, host-fixed count + dead-round spec |
 | Build marker                 | `version.rigorous.test.ts` | 5 | Missing/blank/40-char/short/custom label branches |
-| **Total**                    |                          | **249**|                                                   |
+| **Total**                    |                          | **257**|                                                   |
+
+## Dead-Round Filter (Unvotable Tracks Never Start)
+
+**Bug:** Both players submitted the same link → dedup merged one track with all players as submitters → both taps became local dummies (correctly unrecorded) → reveal scored nothing → `GAMEOVER` 0–0 with `1 track played`. A structurally unplayable game with no warning and no way forward.
+
+**Fix:** New pure `partitionPlayable(tracks, playerNames)` in `src/lib/roomLifecycle.ts` (unvotable = every live player submitted it). `src/hooks/useRoom.ts hostNext` filters before shuffling — **Guessing only** (Jukebox keeps all tracks, playback needs no voters); zero-playable guessing start is a transaction no-op. `src/components/game/SubmissionView.tsx` shows `⚠️ N tracks everyone submitted — skipped at start` and blocks Start with `No playable tracks — submit different songs` when none remain playable.
+
+**Tests:** +8 cases (all-submitter dead round, outsider playable, departed names ignored, mixed split order-preserved, empty, no-live-players, same-link spec, normal-game spec). `257` total.
 
 ## Host-Fixed Song Count (Exactly N)
 

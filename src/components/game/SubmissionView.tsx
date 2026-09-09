@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { RoomState } from '@/types/game'
-import { hasExactCount } from '@/lib/roomLifecycle'
+import { hasExactCount, partitionPlayable } from '@/lib/roomLifecycle'
 import { extractVideoId } from '@/lib/youtube'
 
 interface SubmissionViewProps {
@@ -30,6 +30,15 @@ export default function SubmissionView({
 
   const validCount = urls.filter((u) => u.trim() !== '' && extractVideoId(u) !== null).length
   const exactReady = hasExactCount(validCount, songCount)
+
+  // Guessing only: tracks everyone submitted are dead rounds (nobody can vote) and are skipped at start
+  const { playable, unvotable } =
+    room.mode === 'GUESSING'
+      ? partitionPlayable(
+          room.tracks,
+          players.map((p) => p.name),
+        )
+      : { playable: room.tracks, unvotable: [] }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -118,8 +127,15 @@ export default function SubmissionView({
           ))}
         </ul>
 
+        {unvotable.length > 0 && (
+          <p className="mt-4 rounded-lg bg-amber-500/10 px-3 py-2 text-center text-xs font-semibold text-amber-300">
+            ⚠️ {unvotable.length} track{unvotable.length === 1 ? '' : 's'} everyone submitted — no
+            one can vote on {unvotable.length === 1 ? 'it' : 'them'}, skipped at start.
+          </p>
+        )}
+
         {isHost ? (
-          room.tracks.length > 0 ? (
+          playable.length > 0 ? (
             <button
               type="button"
               onClick={onNext}
@@ -127,6 +143,11 @@ export default function SubmissionView({
             >
               {room.mode === 'JUKEBOX' ? 'Start Playback' : 'Start Game'}
             </button>
+          ) : room.mode === 'GUESSING' && room.tracks.length > 0 ? (
+            <p className="mt-4 rounded-lg bg-rose-500/10 px-3 py-2 text-center text-xs font-semibold text-rose-300">
+              No playable tracks — every track has all players as submitters. Submit different
+              songs.
+            </p>
           ) : null
         ) : allSubmitted ? (
           <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-xs font-semibold text-emerald-300">

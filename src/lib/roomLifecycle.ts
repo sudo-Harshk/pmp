@@ -21,6 +21,36 @@ export function hasExactCount(validCount: number, required: number): boolean {
   return validCount === clampSongCount(required)
 }
 
+export interface PlayablePartition {
+  playable: RoomState['tracks']
+  unvotable: RoomState['tracks']
+}
+
+/**
+ * Split tracks into votable vs dead rounds. A track is unvotable when every
+ * live player submitted it (no eligible guessers — a guaranteed scoreless round).
+ * Jukebox ignores this (playback needs no voters).
+ */
+export function partitionPlayable(
+  tracks: RoomState['tracks'],
+  playerNames: string[],
+): PlayablePartition {
+  const live = new Set(playerNames)
+  const playable: RoomState['tracks'] = []
+  const unvotable: RoomState['tracks'] = []
+  for (const track of tracks) {
+    const submitters = new Set(track.submittedBy)
+    const hasEligible = [...live].some((name) => !submitters.has(name))
+    // Dead round: at least one live player exists, yet none can vote
+    if (live.size > 0 && !hasEligible) {
+      unvotable.push(track)
+    } else {
+      playable.push(track)
+    }
+  }
+  return { playable, unvotable }
+}
+
 /** Reset every player's score/ready state for a rematch, keeping id + name. */
 export function resetPlayersForPlayAgain(
   players: Record<string, Player>,

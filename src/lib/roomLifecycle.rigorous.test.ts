@@ -9,11 +9,16 @@ import {
   limitUrls,
   MAX_SONGS_PER_PLAYER,
   MIN_SONGS_PER_PLAYER,
+  partitionPlayable,
   removePlayer,
   resetPlayersForPlayAgain,
 } from '@/lib/roomLifecycle'
 import { SNIPPET_DURATION_SECONDS } from '@/lib/playerLogic'
-import type { Player } from '@/types/game'
+import type { Player, PlaylistTrack } from '@/types/game'
+
+function makeTrack(videoId: string, submittedBy: string[]): PlaylistTrack {
+  return { videoId, submittedBy, played: false }
+}
 
 function makePlayer(id: string, name: string, score = 0): Player {
   return { id, name, score, hasSubmitted: true, bestRound: 5 }
@@ -259,5 +264,63 @@ describe('BLACK-BOX: join-routing regression spec', () => {
     const result = buildJoinResult(' abcd ', 'player-1')
     expect(result.roomCode).toBe('ABCD')
     expect(result.playerId).toBe('player-1')
+  })
+})
+
+// WHITE-BOX: partitionPlayable branches
+describe('WHITE-BOX: partitionPlayable branches', () => {
+  it('branch: all-submitter track → unvotable (the 0-0 dead round)', () => {
+    const tracks = [makeTrack('aaaaaaaaaaa', ['dmeo', 'le chelo'])]
+    const { playable, unvotable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable).toEqual([])
+    expect(unvotable).toHaveLength(1)
+  })
+  it('branch: track with any outsider → playable', () => {
+    const tracks = [makeTrack('aaaaaaaaaaa', ['dmeo'])]
+    const { playable, unvotable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable).toHaveLength(1)
+    expect(unvotable).toEqual([])
+  })
+  it('branch: departed submitter names do not block eligibility', () => {
+    const tracks = [makeTrack('aaaaaaaaaaa', ['dmeo', 'Ghost'])]
+    const { playable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable).toHaveLength(1) // le chelo is live and not a submitter
+  })
+  it('branch: mixed playlist splits correctly, order preserved', () => {
+    const tracks = [
+      makeTrack('aaaaaaaaaaa', ['dmeo', 'le chelo']),
+      makeTrack('bbbbbbbbbbb', ['dmeo']),
+      makeTrack('ccccccccccc', ['le chelo']),
+    ]
+    const { playable, unvotable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable.map((t) => t.videoId)).toEqual(['bbbbbbbbbbb', 'ccccccccccc'])
+    expect(unvotable.map((t) => t.videoId)).toEqual(['aaaaaaaaaaa'])
+  })
+  it('branch: empty tracks → both empty', () => {
+    expect(partitionPlayable([], ['dmeo'])).toEqual({ playable: [], unvotable: [] })
+  })
+  it('branch: no live players → nothing marked unvotable', () => {
+    const tracks = [makeTrack('aaaaaaaaaaa', ['dmeo'])]
+    const { playable, unvotable } = partitionPlayable(tracks, [])
+    expect(playable).toHaveLength(1)
+    expect(unvotable).toEqual([])
+  })
+})
+
+// BLACK-BOX: dead-round filter spec
+describe('BLACK-BOX: dead-round filter spec', () => {
+  it('same-link-both-players game yields zero playable tracks', () => {
+    const tracks = [makeTrack('aaaaaaaaaaa', ['dmeo', 'le chelo'])]
+    const { playable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable).toEqual([])
+  })
+  it('normal game keeps every track playable', () => {
+    const tracks = [
+      makeTrack('aaaaaaaaaaa', ['dmeo']),
+      makeTrack('bbbbbbbbbbb', ['le chelo']),
+    ]
+    const { playable, unvotable } = partitionPlayable(tracks, ['dmeo', 'le chelo'])
+    expect(playable).toHaveLength(2)
+    expect(unvotable).toEqual([])
   })
 })

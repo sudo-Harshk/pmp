@@ -26,6 +26,7 @@ import {
   DEFAULT_SONGS_PER_PLAYER,
   isNameTaken,
   limitUrls,
+  partitionPlayable,
   removePlayer,
 } from '@/lib/roomLifecycle'
 import { clearSession, getSession } from '@/lib/storage'
@@ -407,7 +408,15 @@ export function useRoom(roomCode?: string, options?: UseRoomOptions): UseRoomRes
       if (status === 'SUBMISSION' || (status === 'PLAYING' && (data.mode as GameMode) === 'JUKEBOX' && tracks.length === 0)) {
         // Begin playback at the first track once submissions are in — shuffle once for engagement.
         const mode = (data.mode as GameMode) ?? 'GUESSING'
-        const shuffled = shuffleFisherYates(tracks)
+        // Guessing only: drop dead rounds (every live player submitted → nobody can vote).
+        // Jukebox keeps all tracks — playback needs no voters.
+        const playersData = (data.players as Record<string, Player>) ?? {}
+        const liveNames = Object.values(playersData).map((p) => p.name)
+        const startTracks =
+          mode === 'GUESSING' ? partitionPlayable(tracks, liveNames).playable : tracks
+        // Zero playable guessing tracks (e.g. a non-submitter left) → stay put; UI blocks Start
+        if (mode === 'GUESSING' && startTracks.length === 0 && tracks.length > 0) return currentVal
+        const shuffled = shuffleFisherYates(startTracks)
         const tracksWithPlayed =
           shuffled.length > 0 ? shuffled.map((t, i) => (i === 0 ? { ...t, played: true } : t)) : shuffled
         return {

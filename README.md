@@ -51,6 +51,7 @@ Phases 1–4 are complete; refinements and commercial hardening are now on `main
 - **Phase 3 — Jukebox skip consistency** — **fix:** Jukebox `Skip Unplayable Track` now shows only on `101/150/100` errors, exactly like Guessing mode — same banner, same button, everyone, same time
 - **Phase 4 — Dead code** — **fix:** removed unused guard-bypassing `updateGameState` from `useRoom`
 - **Host-fixed song count** — host sets **Songs per player** in the lobby (1–10, default 3); everyone submits exactly N (button gated, devtools extras truncated server-side)
+- **Dead-round filter** — tracks everyone submitted are unvotable by construction: flagged and skipped at start (Guessing), Start blocked with guidance when none remain playable
 
 See [`docs/PHASES.md`](./docs/PHASES.md) for the full history.
 
@@ -100,9 +101,9 @@ npm test
 - **Session storage** — `src/lib/storage.test.ts` (9) + `storage.rigorous.test.ts` (10) — malformed/missing/overwrite/clear
 - **Room names** — `src/lib/roomNames.test.ts` (4) + `roomNames.rigorous.test.ts` (10) — 48 Telugu-cinema names with meanings, exhaustive ≤32
 - **Bugfixes (voting/skip/join)** — `bugfixes.rigorous.test.ts` (44) — candidates/skip/join/failover/toasts/start/roomName
-- **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (18) — reset keeps roster, last-leave deletes, rematch + duplicate-name spec
+- **Room lifecycle** — `roomLifecycle.rigorous.test.ts` (40) — reset, last-leave, rematch, duplicate names, host-fixed count + dead-round spec
 - **Build marker** — `version.rigorous.test.ts` (5) — footer label branches
-- **Total: 240 tests across 13 suites — all white-box + black-box for every bug fix**
+- **Total: 257 tests across 13 suites — all white-box + black-box for every bug fix**
 
 ## Hosting
 
